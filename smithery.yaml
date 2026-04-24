@@ -1,6 +1,6 @@
 startCommand:
   type: http
-  url: https://hs-code-classifier-mcp-production.up.railway.app
+  url: https://hs-code-classifier-mcp-server-production.up.railway.app
   configSchema:
     type: object
     properties:

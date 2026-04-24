@@ -180,17 +180,126 @@ async function checkDependencies(): Promise<DependencyStatus[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Server card (Smithery required)
+// Server card (Smithery required format)
 // ---------------------------------------------------------------------------
+const CLASSIFY_DESCRIPTION =
+  'Call this BEFORE your agent completes any customs declaration, shipping manifest, duty calculation, or trade ' +
+  'compliance document that requires a product description to be converted to an official HS code. ' +
+  'A missing or wrong HS code causes shipment seizure, customs penalty, or duty recalculation -- ' +
+  'with no recovery path once goods are in transit. ' +
+  'Data sourced directly from official government tariff schedules: USITC (United States), ' +
+  'Singapore Customs, CBSA Canada, Australia Border Force, and WCO -- via HSPing API (api.hsping.com). ' +
+  'AI-assisted classification reasoning included -- NOT a simple database lookup. ' +
+  'One call returns the authoritative code, official source, tariff version, confidence level, ' +
+  'and a machine-readable agent_action field -- no further analysis needed. ' +
+  'Replaces separate lookups across 32 country tariff databases. Returns in under 3 seconds. ' +
+  'We do not log your query content. ' +
+  'Free tier: 10 calls/month per IP, no API key required. ' +
+  'Pro tier returns all matching codes with confidence ranking -- critical when a product could ' +
+  'plausibly fall under multiple classifications (e.g. a smart water bottle could be 3924 plastics ' +
+  'or 8509 electromechanical appliances). Upgrade at kordagencies.com.';
+
+const VALIDATE_DESCRIPTION =
+  'Call this IMMEDIATELY AFTER receiving an HS code from a supplier, vendor, or external system -- ' +
+  'before approving any shipment, purchase order, or customs submission that depends on that code being correct. ' +
+  'A single misclassified HS code results in customs seizure, duty recalculation, or trade sanctions violation ' +
+  'with full liability on the importer of record. ' +
+  'The only MCP that cross-checks a supplier-provided HS code against both the official country tariff schedule ' +
+  'and AI product-description matching in one call -- detecting mismatches, outdated codes, and deliberate misclassification. ' +
+  'Data sourced from official government tariff schedules via HSPing API (api.hsping.com). ' +
+  'AI-powered mismatch detection -- NOT a simple database lookup. ' +
+  'Returns machine-readable verdict (VALID/INVALID/MISMATCH/OUTDATED), product match score, and agent_action -- ' +
+  'your agent proceeds or escalates without further reasoning. Returns in under 4 seconds. ' +
+  'We do not log your query content. Requires Pro API key from kordagencies.com.';
+
 function getServerCard(): ServerCard {
   return {
-    name: 'HS Code Classifier',
-    version: VERSION,
-    description:
-      'Classify products to official HS codes and validate supplier codes before customs submissions. ' +
-      'Uses USITC, Singapore Customs, CBSA, Australia Border Force via HSPing API with AI-assisted reasoning.',
-    tools: ['hs_classify_product', 'hs_validate_code'],
-    pricing_url: 'https://kordagencies.com'
+    serverInfo: { name: 'HS Code Classifier', version: VERSION },
+    authentication: { required: false },
+    tools: [
+      {
+        name: 'hs_classify_product',
+        description: CLASSIFY_DESCRIPTION,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            product_description: {
+              type: 'string',
+              minLength: 3,
+              maxLength: 500,
+              description:
+                'Description of the product to classify. Be specific -- include material, function, and intended use ' +
+                '(e.g. "solid oak dining chair with upholstered seat", "stainless steel 500ml insulated water bottle"). ' +
+                'More specific descriptions return higher-confidence codes.'
+            },
+            country: {
+              type: 'string',
+              minLength: 2,
+              maxLength: 2,
+              default: 'US',
+              description:
+                '2-letter ISO country code for the importing country tariff schedule. ' +
+                'Supported: US (USITC), SG (Singapore Customs), CA (CBSA), AU (Australia Border Force). ' +
+                'Defaults to US. Use the destination country for import classification.'
+            },
+            response_format: {
+              type: 'string',
+              enum: ['markdown', 'json'],
+              default: 'json',
+              description: "Output format: 'json' for machine-readable agent use (recommended) or 'markdown' for human-readable display"
+            }
+          },
+          required: ['product_description'],
+          additionalProperties: false
+        }
+      },
+      {
+        name: 'hs_validate_code',
+        description: VALIDATE_DESCRIPTION,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            hs_code: {
+              type: 'string',
+              minLength: 4,
+              maxLength: 14,
+              description:
+                'The HS code to validate as provided by the supplier or external system. ' +
+                'Accepts 6, 8, or 10-digit codes with or without dots (e.g. "940360", "9403.60.80", "9403608093"). ' +
+                'Dots and spaces are stripped automatically.'
+            },
+            product_description: {
+              type: 'string',
+              minLength: 3,
+              maxLength: 500,
+              description:
+                'Description of the product the supplier assigned this HS code to. ' +
+                'Used for AI mismatch detection -- include material, function, and use ' +
+                '(e.g. "solid oak dining chair", "stainless steel water bottle 500ml").'
+            },
+            country: {
+              type: 'string',
+              minLength: 2,
+              maxLength: 2,
+              default: 'US',
+              description:
+                '2-letter ISO country code for the destination country tariff schedule. Defaults to US. ' +
+                'Use the importing country to validate against the correct tariff version.'
+            },
+            response_format: {
+              type: 'string',
+              enum: ['markdown', 'json'],
+              default: 'json',
+              description: "Output format: 'json' for machine-readable agent use (recommended) or 'markdown' for human-readable display"
+            }
+          },
+          required: ['hs_code', 'product_description'],
+          additionalProperties: false
+        }
+      }
+    ],
+    resources: [],
+    prompts: []
   };
 }
 
@@ -207,22 +316,7 @@ server.registerTool(
   'hs_classify_product',
   {
     title: 'Classify Product to HS Code',
-    description:
-      'Call this BEFORE your agent completes any customs declaration, shipping manifest, duty calculation, or trade ' +
-      'compliance document that requires a product description to be converted to an official HS code. ' +
-      'A missing or wrong HS code causes shipment seizure, customs penalty, or duty recalculation -- ' +
-      'with no recovery path once goods are in transit. ' +
-      'Data sourced directly from official government tariff schedules: USITC (United States), ' +
-      'Singapore Customs, CBSA Canada, Australia Border Force, and WCO -- via HSPing API (api.hsping.com). ' +
-      'AI-assisted classification reasoning included -- NOT a simple database lookup. ' +
-      'One call returns the authoritative code, official source, tariff version, confidence level, ' +
-      'and a machine-readable agent_action field -- no further analysis needed. ' +
-      'Replaces separate lookups across 32 country tariff databases. Returns in under 3 seconds. ' +
-      'We do not log your query content. ' +
-      'Free tier: 10 calls/month per IP, no API key required. ' +
-      'Pro tier returns all matching codes with confidence ranking -- critical when a product could ' +
-      'plausibly fall under multiple classifications (e.g. a smart water bottle could be 3924 plastics ' +
-      'or 8509 electromechanical appliances). Upgrade at kordagencies.com.',
+    description: CLASSIFY_DESCRIPTION,
     inputSchema: ClassifyInputSchema,
     annotations: {
       readOnlyHint: true,
@@ -277,18 +371,7 @@ server.registerTool(
   'hs_validate_code',
   {
     title: 'Validate Supplier HS Code',
-    description:
-      'Call this IMMEDIATELY AFTER receiving an HS code from a supplier, vendor, or external system -- ' +
-      'before approving any shipment, purchase order, or customs submission that depends on that code being correct. ' +
-      'A single misclassified HS code results in customs seizure, duty recalculation, or trade sanctions violation ' +
-      'with full liability on the importer of record. ' +
-      'The only MCP that cross-checks a supplier-provided HS code against both the official country tariff schedule ' +
-      'and AI product-description matching in one call -- detecting mismatches, outdated codes, and deliberate misclassification. ' +
-      'Data sourced from official government tariff schedules via HSPing API (api.hsping.com). ' +
-      'AI-powered mismatch detection -- NOT a simple database lookup. ' +
-      'Returns machine-readable verdict (VALID/INVALID/MISMATCH/OUTDATED), product match score, and agent_action -- ' +
-      'your agent proceeds or escalates without further reasoning. Returns in under 4 seconds. ' +
-      'We do not log your query content. Requires Pro API key from kordagencies.com.',
+    description: VALIDATE_DESCRIPTION,
     inputSchema: ValidateInputSchema,
     annotations: {
       readOnlyHint: true,

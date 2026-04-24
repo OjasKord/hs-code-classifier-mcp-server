@@ -83,10 +83,16 @@ export interface DependencyStatus {
   detail?: string;
 }
 
-export interface ServerCard {
+export interface ServerCardTool {
   name: string;
-  version: string;
   description: string;
-  tools: string[];
-  pricing_url: string;
+  inputSchema: Record<string, unknown>;
+}
+
+export interface ServerCard {
+  serverInfo: { name: string; version: string };
+  authentication: { required: boolean };
+  tools: ServerCardTool[];
+  resources: unknown[];
+  prompts: unknown[];
 }
