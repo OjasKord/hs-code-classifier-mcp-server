@@ -469,10 +469,11 @@ async function runHTTP(): Promise<void> {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, x-api-key'
+    'Access-Control-Allow-Headers': 'Content-Type, x-api-key, x-stats-key'
   };
 
-  app.options('*', (req, res) => { res.set(cors).sendStatus(204); });
+  // Global OPTIONS preflight -- must return 200 with full CORS headers
+  app.options('*', (req, res) => { res.status(200).set(cors).end(); });
 
   // Health -- handles GET and HEAD (UptimeRobot sends HEAD)
   app.all('/health', (req, res) => {
@@ -488,7 +489,7 @@ async function runHTTP(): Promise<void> {
   // Stats -- protected
   app.get('/stats', (req, res) => {
     if (req.headers['x-stats-key'] !== process.env.STATS_KEY) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).set(cors).json({ error: 'Unauthorized' });
       return;
     }
     res.set(cors).json(getStatsPayload());
@@ -502,13 +503,13 @@ async function runHTTP(): Promise<void> {
       const sig = req.headers['stripe-signature'] as string;
       const secret = process.env.STRIPE_WEBHOOK_SECRET ?? '';
       if (!verifyStripeSignature(req.body.toString(), sig, secret)) {
-        res.status(400).json({ error: 'Invalid signature' });
+        res.status(400).set(cors).json({ error: 'Invalid signature' });
         return;
       }
       handleStripeEvent(JSON.parse(req.body.toString()) as Record<string, unknown>).catch(err =>
         console.error('[stripe] handler error:', err)
       );
-      res.json({ received: true });
+      res.set(cors).json({ received: true });
     }
   );
 
@@ -525,6 +526,7 @@ async function runHTTP(): Promise<void> {
       '127.0.0.1';
     currentApiKey = (req.headers['x-api-key'] as string | undefined) ?? '';
 
+    res.set(cors);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true
