@@ -1,0 +1,6 @@
+{
+  "name": "hs-code-classifier-mcp-server",
+  "description": "Classify products to official HS codes and validate supplier codes before customs submissions",
+  "homepage": "https://kordagencies.com",
+  "license": "UNLICENSED"
+}

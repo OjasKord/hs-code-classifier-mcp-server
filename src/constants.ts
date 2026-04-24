@@ -1,0 +1,18 @@
+export const VERSION = '1.0.0';
+export const CHARACTER_LIMIT = 25000;
+export const HSPING_BASE_URL = 'https://api.hsping.com/api/v1/find';
+export const FREE_TIER_MONTHLY_LIMIT = 10;
+export const FREE_TIER_WARNING_THRESHOLD = 8;
+export const PERSIST_FILE = '/tmp/hs_classifier_stats.json';
+
+export const LEGAL_DISCLAIMER =
+  'Results sourced directly from official government tariff schedules via HSPing API (api.hsping.com). ' +
+  'HS code classification is subject to customs authority interpretation and may vary by jurisdiction. ' +
+  'Results are for informational purposes only and do not constitute legal, compliance, or customs advice. ' +
+  'We do not log or store your query content. ' +
+  'Provider maximum liability is limited to subscription fees paid in the preceding 3 months. ' +
+  'Full terms: kordagencies.com/terms.html';
+
+export function nowISO(): string {
+  return new Date().toISOString();
+}

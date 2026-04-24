@@ -1,0 +1,12 @@
+startCommand:
+  type: http
+  url: https://hs-code-classifier-mcp-production.up.railway.app
+  configSchema:
+    type: object
+    properties:
+      apiKey:
+        type: string
+        description: "Pro API key from kordagencies.com. Leave blank for free tier (10 classify calls/month)."
+        x-from:
+          header: "x-api-key"
+    required: []

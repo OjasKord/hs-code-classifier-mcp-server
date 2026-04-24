@@ -1,0 +1,41 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.OjasKord/hs-code-classifier-mcp-server",
+  "version": "1.0.0",
+  "title": "HS Code Classifier",
+  "description": "Classify products to official HS codes and validate supplier codes before customs submissions",
+  "websiteUrl": "https://kordagencies.com",
+  "repository": {
+    "url": "https://github.com/OjasKord/hs-code-classifier-mcp-server",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "hs-code-classifier-mcp",
+      "version": "1.0.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "description": "Anthropic API key for AI-assisted classification reasoning",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "HSPING_API_KEY",
+          "description": "HSPing API key for official tariff schedule access",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://hs-code-classifier-mcp-production.up.railway.app"
+    }
+  ]
+}
