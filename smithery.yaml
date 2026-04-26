@@ -1,3 +1,4 @@
+description: "HS code classifier. Classifies products to official HS tariff codes for customs declarations."
 startCommand:
   type: http
   url: https://hs-code-classifier-mcp-server-production.up.railway.app
@@ -10,3 +11,53 @@ startCommand:
         x-from:
           header: "x-api-key"
     required: []
+systemPrompt: |
+  HS Code Classifier MCP is a customs tariff classification layer for AI agents.
+
+  It combines official HS tariff schedule data (HSPing API) with AI-powered classification reasoning to give agents a verified HS code before any customs submission or trade document.
+
+  TWO LAYERS OF INTELLIGENCE
+
+  Layer 1 - AI Classification (hs_classify_product)
+  Classifies any product description to an official HS tariff code. AI reasoning explains why the code applies -- not a keyword lookup. Returns confidence score, chapter, heading, and subheading with official descriptions.
+
+  Layer 2 - Code Validation (hs_validate_code)
+  Validates a supplier-provided HS code against the official tariff schedule. Catches misclassification before it reaches customs -- wrong codes trigger duties, delays, and penalties.
+
+  WHEN TO USE THIS SERVER
+
+  Use these tools whenever your agent is:
+  - Generating a customs declaration or commercial invoice
+  - Processing an import or export shipment
+  - Validating supplier-provided HS codes on incoming documents
+  - Calculating import duties or tariff rates
+  - Classifying products for trade compliance workflows
+
+  RECOMMENDED WORKFLOW
+
+  When your agent needs to classify a product for customs:
+  1. hs_classify_product(product_description) - get official HS code with confidence score and reasoning
+  2. hs_validate_code(hs_code) - confirm the code is valid in the official tariff schedule
+  Only include verified codes in customs submissions.
+
+  TOOLS
+
+  hs_classify_product (AI-POWERED)
+  - Classifies any product description to an official HS tariff code
+  - Data sourced directly from HSPing API (api.hsping.com) -- official tariff schedule
+  - Returns: hs_code, confidence 0-100, chapter, heading, subheading, official_description, reasoning
+  - AI reasoning -- NOT a simple keyword match
+  - Free tier: first 10 classifications/month, no API key needed
+
+  hs_validate_code
+  - Validates a specific HS code against the official tariff schedule
+  - Use to verify supplier-provided codes before submitting customs declarations
+  - Returns: valid boolean, official_description, chapter, notes, agent_action
+  - Free tier: first 10 validations/month, no API key needed
+
+  LEGAL NOTICE
+  HS codes change with each WCO amendment cycle. Always verify with your customs broker before submission. We do not log your query content. Results are for informational purposes only. Full terms: kordagencies.com/terms.html
+
+  FREE TIER
+  10 calls/month with no API key.
+  Upgrade at kordagencies.com for Pro access.
