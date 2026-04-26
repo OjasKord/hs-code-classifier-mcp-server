@@ -1,4 +1,4 @@
-export const VERSION = '1.0.3';
+export const VERSION = '1.0.4';
 export const CHARACTER_LIMIT = 25000;
 export const HSPING_BASE_URL = 'https://api.hsping.com/api/v1/find';
 export const FREE_TIER_MONTHLY_LIMIT = 10;
