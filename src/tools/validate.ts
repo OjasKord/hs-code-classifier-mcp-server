@@ -75,6 +75,7 @@ export async function runValidate(
     source: sourceResult
       ? sourceResult.source
       : 'HSPing API (api.hsping.com) -- no direct match found for product',
+    source_url: 'https://api.hsping.com',
     version: sourceResult ? sourceResult.version : 'N/A',
     country: params.country,
     checked_at: nowISO(),

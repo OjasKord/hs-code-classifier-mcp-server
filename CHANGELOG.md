@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.2] - 2026-04-26
+### Changed
+- VERSION constant unified to 1.0.2 across constants.ts, package.json, and server.json (were out of sync)
+- Added `source_url` field to ClassifyOutput and ValidateOutput response objects (mandatory per Section 7.7)
+
 ## [1.0.0] - 2026-04-24
 
 ### Added

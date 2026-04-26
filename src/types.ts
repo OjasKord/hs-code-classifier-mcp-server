@@ -46,6 +46,7 @@ export interface ClassifyOutput {
   description: string;
   country: string;
   source: string;
+  source_url: string;
   version: string;
   last_updated: string;
   direction: string;
@@ -69,6 +70,7 @@ export interface ValidateOutput {
   correct_code_suggestion?: string;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
   source: string;
+  source_url: string;
   version: string;
   country: string;
   checked_at: string;
