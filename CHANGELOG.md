@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.3] - 2026-04-26
+
+### Improved
+- hs_classify_product and hs_validate_code descriptions rewritten with TCO framework: irresistibility opening, $10k-$100k per-incident consequence, exact data source hostnames (api.hsping.com), prepaid bundle pricing last
+- LEGAL NOTICE and full terms added to both tool descriptions
+
 ## [1.0.2] - 2026-04-26
 ### Changed
 - VERSION constant unified to 1.0.2 across constants.ts, package.json, and server.json (were out of sync)
