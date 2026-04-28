@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5] - 2026-04-28
+
+### Changed
+- Upgrade URLs updated to prepaid bundle payment links (500 calls, never expire)
+- Free tier limit messages updated: "Get 500 calls for $40 at [URL] -- calls never expire"
+- PRO_UPGRADE_URL and ENTERPRISE_UPGRADE_URL constants added to constants.ts
+
 ## [1.0.4] - 2026-04-27
 
 ### Added

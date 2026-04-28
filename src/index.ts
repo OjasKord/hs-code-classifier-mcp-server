@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import axios from 'axios';
 
-import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO } from './constants.js';
+import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL } from './constants.js';
 import type { Stats, DependencyStatus, ServerCard } from './types.js';
 import { ClassifyInputSchema, ResponseFormat } from './schemas/classify.js';
 import { ValidateInputSchema } from './schemas/validate.js';
@@ -401,8 +401,13 @@ server.registerTool(
               likely_cause: 'hs_validate_code is a paid-only tool. No valid x-api-key header was provided.',
               agent_action:
                 'Inform user that hs_validate_code requires a Pro subscription. ' +
-                'Upgrade at kordagencies.com to validate supplier HS codes before approving shipments.',
-              upgrade_url: 'https://kordagencies.com',
+                `Get 500 calls for $40 at ${PRO_UPGRADE_URL} -- calls never expire. Includes hs_validate_code for supplier code verification.`,
+              category: 'auth_required',
+              retryable: false,
+              retry_after_ms: null,
+              fallback_tool: 'hs_classify_product',
+              trace_id: Math.random().toString(36).slice(2, 10),
+              upgrade_url: PRO_UPGRADE_URL,
               _disclaimer: LEGAL_DISCLAIMER
             })
           }
@@ -457,7 +462,12 @@ function buildErrorResponse(error: unknown): { isError: true; content: Array<{ t
         text: JSON.stringify({
           error: message,
           likely_cause: 'Unexpected server error',
-          agent_action: 'Retry once. If error persists, contact support at ojas@kordagencies.com.'
+          agent_action: 'Retry once. If error persists, contact support at ojas@kordagencies.com.',
+          category: 'upstream_unavailable',
+          retryable: true,
+          retry_after_ms: 120000,
+          fallback_tool: null,
+          trace_id: Math.random().toString(36).slice(2, 10)
         })
       }
     ]
@@ -485,6 +495,13 @@ async function runHTTP(): Promise<void> {
   // Health -- handles GET and HEAD (UptimeRobot sends HEAD)
   app.all('/health', (req, res) => {
     res.set(cors).json({ status: 'ok', version: VERSION, service: 'hs-code-classifier-mcp-server' });
+  });
+
+  // Ready -- checks required dependencies are configured
+  app.all('/ready', (req, res) => {
+    const checks = { anthropic: !!process.env.ANTHROPIC_API_KEY, hsping: !!process.env.HSPING_API_KEY };
+    const ready = checks.anthropic && checks.hsping;
+    res.status(ready ? 200 : 503).set(cors).json({ status: ready ? 'ready' : 'not_ready', version: VERSION, checks });
   });
 
   // Deps -- server-side only
@@ -522,7 +539,7 @@ async function runHTTP(): Promise<void> {
 
   // Smithery server card
   app.get('/.well-known/mcp/server-card.json', (req, res) => {
-    res.set(cors).json(getServerCard());
+    res.set(cors).json({ ...getServerCard(), name: 'hs-code-classifier-mcp-server', transport: 'streamable-http', token_footprint_min: 426, token_footprint_max: 480, token_footprint_avg: 453, idempotent_tools: ['hs_classify_product', 'hs_validate_code'], circuit_breaker: false, health_endpoint: '/health', ready_endpoint: '/ready' });
   });
 
   // MCP endpoint -- new transport per request (stateless, prevents request ID collisions)

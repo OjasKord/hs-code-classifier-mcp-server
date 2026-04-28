@@ -3,7 +3,7 @@ import { classifyWithAI } from '../services/claude-client.js';
 import type { ClassifyInput } from '../schemas/classify.js';
 import { ResponseFormat } from '../schemas/classify.js';
 import type { ClassifyOutput, Stats } from '../types.js';
-import { nowISO, LEGAL_DISCLAIMER, FREE_TIER_MONTHLY_LIMIT, FREE_TIER_WARNING_THRESHOLD } from '../constants.js';
+import { nowISO, LEGAL_DISCLAIMER, FREE_TIER_MONTHLY_LIMIT, FREE_TIER_WARNING_THRESHOLD, PRO_UPGRADE_URL } from '../constants.js';
 
 function buildMarkdown(out: ClassifyOutput): string {
   const lines: string[] = [
@@ -33,7 +33,7 @@ export async function runClassify(
   ip: string,
   isPaid: boolean,
   stats: Stats
-): Promise<{ output: ClassifyOutput | null; error?: { error: string; likely_cause: string; agent_action: string } }> {
+): Promise<{ output: ClassifyOutput | null; error?: Record<string, unknown> }> {
   if (!isPaid) {
     const month = new Date().toISOString().slice(0, 7);
     const ipMap = stats.free_tier_calls_by_ip[ip] ?? {};
@@ -46,8 +46,13 @@ export async function runClassify(
           error: 'Free tier limit reached',
           likely_cause: `This IP has used all ${FREE_TIER_MONTHLY_LIMIT} free classify calls for this month`,
           agent_action:
-            'Inform user that free quota is exhausted. Upgrade to Pro for unlimited calls at kordagencies.com. ' +
-            'Pro tier also unlocks hs_validate_code for supplier code verification.'
+            `Free tier limit reached. Get 500 calls for $40 at ${PRO_UPGRADE_URL} -- calls never expire. ` +
+            'Pro tier also unlocks hs_validate_code for supplier code verification.',
+          category: 'rate_limit',
+          retryable: false,
+          retry_after_ms: null,
+          fallback_tool: null,
+          trace_id: Math.random().toString(36).slice(2, 10)
         }
       };
     }
@@ -63,7 +68,12 @@ export async function runClassify(
         error: {
           error: `HSPing API error: HTTP ${err.response?.status ?? 'timeout'}`,
           likely_cause: 'HSPing API is temporarily unavailable or HSPING_API_KEY is invalid',
-          agent_action: 'Retry once after 30 seconds. If error persists, check service status at kordagencies.com.'
+          agent_action: 'Retry once after 30 seconds. If error persists, check service status at kordagencies.com.',
+          category: 'upstream_unavailable',
+          retryable: true,
+          retry_after_ms: 30000,
+          fallback_tool: 'hs_classify_product',
+          trace_id: Math.random().toString(36).slice(2, 10)
         }
       };
     }
@@ -72,7 +82,12 @@ export async function runClassify(
       error: {
         error: err instanceof Error ? err.message : String(err),
         likely_cause: 'Unexpected error querying tariff database',
-        agent_action: 'Retry once. If error persists, contact support at ojas@kordagencies.com.'
+        agent_action: 'Retry once. If error persists, contact support at ojas@kordagencies.com.',
+        category: 'upstream_unavailable',
+        retryable: true,
+        retry_after_ms: 120000,
+        fallback_tool: 'hs_classify_product',
+        trace_id: Math.random().toString(36).slice(2, 10)
       }
     };
   }
@@ -99,8 +114,10 @@ export async function runClassify(
       total_matches: 0,
       checked_at: nowISO(),
       analysis_type: 'AI-assisted classification -- NOT a simple database lookup',
+      token_count: 0,
       _disclaimer: LEGAL_DISCLAIMER
     };
+    out.token_count = Math.ceil(JSON.stringify(out).length / 4);
     return { output: out };
   }
 
@@ -115,14 +132,14 @@ export async function runClassify(
   if (!isPaid && allResults.length > 1) {
     upgradeNotice =
       `Pro tier shows ${allResults.length - 1} additional classification match${allResults.length - 1 > 1 ? 'es' : ''} for this product -- ` +
-      'important when a product could fall under multiple codes. Upgrade at kordagencies.com.';
+      `important when a product could fall under multiple codes. Get 500 calls for $40 at ${PRO_UPGRADE_URL} -- calls never expire.`;
   }
 
   let notice: string | undefined;
   if (!isPaid && FREE_TIER_MONTHLY_LIMIT - used <= FREE_TIER_MONTHLY_LIMIT - FREE_TIER_WARNING_THRESHOLD) {
     const remaining = Math.max(0, FREE_TIER_MONTHLY_LIMIT - used);
     if (remaining > 0) {
-      notice = `Warning: ${remaining} free classify call${remaining !== 1 ? 's' : ''} remaining this month. Upgrade at kordagencies.com.`;
+      notice = `Warning: ${remaining} free classify call${remaining !== 1 ? 's' : ''} remaining this month. Get 500 calls for $40 at ${PRO_UPGRADE_URL} -- calls never expire.`;
     }
   }
 
@@ -151,9 +168,10 @@ export async function runClassify(
     analysis_type: 'AI-assisted classification -- NOT a simple database lookup',
     ...(upgradeNotice ? { _upgrade_notice: upgradeNotice } : {}),
     ...(notice ? { _notice: notice } : {}),
+    token_count: 0,
     _disclaimer: LEGAL_DISCLAIMER
   };
-
+  out.token_count = Math.ceil(JSON.stringify(out).length / 4);
   return { output: out };
 }
 
