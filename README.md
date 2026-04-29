@@ -1,3 +1,5 @@
+[![smithery badge](https://smithery.ai/badge/OjasKord/hs-code-classifier-mcp-server)](https://smithery.ai/servers/OjasKord/hs-code-classifier-mcp-server)
+
 # HS Code Classifier MCP Server
 
 Classify product descriptions to official HS codes and validate supplier-provided codes before customs submissions. Uses official government tariff schedules (USITC, Singapore Customs, CBSA, Australia Border Force) via HSPing API with AI-assisted classification reasoning.
