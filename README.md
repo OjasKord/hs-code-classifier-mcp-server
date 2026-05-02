@@ -43,11 +43,11 @@ Configure in `claude_desktop_config.json`:
 
 ## Pricing
 
-| Tier | Price | classify_product | validate_code |
-|------|-------|-----------------|---------------|
-| Free | $0 | 10 calls/month, top result only | Not available |
-| Pro | $49/month | Unlimited, all matches with confidence ranking | Unlimited |
-| Enterprise | $199/month | Volume + SLA | Volume + SLA |
+| Tier | Calls | Price |
+|---|---|---|
+| Free | 10/month | $0 |
+| Starter | 500-call bundle | $40 |
+| Pro | 2,000-call bundle | $130 |
 
 Get a Pro key: [kordagencies.com](https://kordagencies.com)
 
