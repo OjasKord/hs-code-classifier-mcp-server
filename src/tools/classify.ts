@@ -58,6 +58,28 @@ export async function runClassify(
     }
   }
 
+  const wordCount = params.product_description.trim().split(/\s+/).length;
+  if (wordCount < 4) {
+    return {
+      output: null,
+      error: {
+        error: 'Product description too vague for reliable HS classification',
+        likely_cause: `"${params.product_description}" has only ${wordCount} word${wordCount === 1 ? '' : 's'}. Descriptions under 4 words return incorrect or ambiguous HS codes from the tariff database.`,
+        agent_action:
+          'Expand the description to include material + function + intended use. ' +
+          'Examples: "solid oak dining chair with upholstered seat" not "chair", ' +
+          '"stainless steel 500ml insulated water bottle" not "bottle", ' +
+          '"polypropylene injection moulding pellets for automotive parts" not "plastic pellets". ' +
+          'Retry with the expanded description.',
+        category: 'invalid_input',
+        retryable: true,
+        retry_after_ms: null,
+        fallback_tool: null,
+        trace_id: Math.random().toString(36).slice(2, 10)
+      }
+    };
+  }
+
   let hspingData;
   try {
     hspingData = await queryHSPing(params.product_description, params.country);
