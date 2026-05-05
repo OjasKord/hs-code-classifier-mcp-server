@@ -41,6 +41,51 @@ Configure in `claude_desktop_config.json`:
 }
 ```
 
+## Harness Integration
+
+Note: this server exposes tools at `/mcp` not the root URL.
+
+### Claude Code / Claude Desktop (.mcp.json)
+```json
+{
+  "mcpServers": {
+    "hs-code-classifier": {
+      "type": "http",
+      "url": "https://hs-code-classifier-mcp-server-production.up.railway.app/mcp"
+    }
+  }
+}
+```
+
+### LangChain (Python)
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+client = MultiServerMCPClient({
+    "hs-code-classifier": {
+        "url": "https://hs-code-classifier-mcp-server-production.up.railway.app/mcp",
+        "transport": "http"
+    }
+})
+tools = await client.get_tools()
+```
+
+### OpenAI Agents SDK (Python)
+```python
+from agents import Agent, HostedMCPTool
+agent = Agent(
+    name="Assistant",
+    tools=[HostedMCPTool(tool_config={
+        "type": "mcp",
+        "server_label": "hs-code-classifier",
+        "server_url": "https://hs-code-classifier-mcp-server-production.up.railway.app/mcp",
+        "require_approval": "never"
+    })]
+)
+```
+
+### LangGraph
+Same as LangChain above — langchain-mcp-adapters works with LangGraph natively.
+
 ## Pricing
 
 | Tier | Calls | Price |
