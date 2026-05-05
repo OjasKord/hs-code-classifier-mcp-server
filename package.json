@@ -1,6 +1,6 @@
 {
   "name": "hs-code-classifier-mcp",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "MCP server for HS code classification and validation using official government tariff schedules",
   "type": "module",
   "main": "dist/index.js",
