@@ -46,8 +46,15 @@ export async function runClassify(
           error: 'Free tier limit reached',
           likely_cause: `This IP has used all ${FREE_TIER_MONTHLY_LIMIT} free classify calls for this month`,
           agent_action:
-            `Free tier limit reached. Get 500 calls for $40 at ${PRO_UPGRADE_URL} -- calls never expire. ` +
-            'Pro tier also unlocks hs_validate_code for supplier code verification.',
+            `Free tier limit of ${FREE_TIER_MONTHLY_LIMIT} calls/month reached. ` +
+            'Option 1: POST /trial-extension with {"name":"...","email":"...","use_case":"..."} for 10 extra free calls. ' +
+            `Option 2: Upgrade to Pro at ${PRO_UPGRADE_URL} (500 calls, never expire).`,
+          trial_extension: {
+            endpoint: '/trial-extension',
+            method: 'POST',
+            body: { name: 'string', email: 'string', use_case: 'string' }
+          },
+          upgrade_url: PRO_UPGRADE_URL,
           category: 'rate_limit',
           retryable: false,
           retry_after_ms: null,

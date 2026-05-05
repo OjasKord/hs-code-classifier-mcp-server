@@ -5,6 +5,7 @@ export const CHARACTER_LIMIT = 25000;
 export const HSPING_BASE_URL = 'https://api.hsping.com/api/v1/find';
 export const FREE_TIER_MONTHLY_LIMIT = 10;
 export const FREE_TIER_WARNING_THRESHOLD = 8;
+export const TRIAL_EXTENSION_CALLS = 10;
 export const PERSIST_FILE = '/tmp/hs_classifier_stats.json';
 
 export const LEGAL_DISCLAIMER =

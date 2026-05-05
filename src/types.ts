@@ -30,6 +30,7 @@ export interface Stats {
     last_seen: string;
     email?: string;
   }>;
+  trial_extensions: Record<string, { name: string; email: string; use_case: string; ip: string; granted_at: string }>;
 }
 
 export interface TierResult {
@@ -58,6 +59,7 @@ export interface ClassifyOutput {
   analysis_type: string;
   _upgrade_notice?: string;
   _notice?: string;
+  token_count?: number;
   _disclaimer: string;
 }
 
@@ -75,6 +77,7 @@ export interface ValidateOutput {
   country: string;
   checked_at: string;
   analysis_type: string;
+  token_count?: number;
   _disclaimer: string;
 }
 

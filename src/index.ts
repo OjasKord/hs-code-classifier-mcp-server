@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import axios from 'axios';
 
-import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL } from './constants.js';
+import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL, TRIAL_EXTENSION_CALLS } from './constants.js';
 import type { Stats, DependencyStatus, ServerCard } from './types.js';
 import { ClassifyInputSchema, ResponseFormat } from './schemas/classify.js';
 import { ValidateInputSchema } from './schemas/validate.js';
@@ -26,7 +26,9 @@ let currentApiKey = '';
 function loadStats(): Stats {
   try {
     const raw = fs.readFileSync(PERSIST_FILE, 'utf8');
-    return JSON.parse(raw) as Stats;
+    const parsed = JSON.parse(raw) as Stats;
+    if (!parsed.trial_extensions) parsed.trial_extensions = {};
+    return parsed;
   } catch {
     return {
       free_tier_calls_by_ip: {},
@@ -34,7 +36,8 @@ function loadStats(): Stats {
       total_calls: 0,
       classify_calls: 0,
       validate_calls: 0,
-      paid_api_keys: {}
+      paid_api_keys: {},
+      trial_extensions: {}
     };
   }
 }
@@ -53,6 +56,18 @@ function incrementFreeTier(ip: string): void {
 
 function isPaidKey(key: string): boolean {
   return key.length > 0 && Object.prototype.hasOwnProperty.call(stats.paid_api_keys, key);
+}
+
+async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) return;
+  try {
+    await axios.post(
+      'https://api.resend.com/emails',
+      { from: 'Kord Agencies <ojas@kordagencies.com>', to: [to], subject, html },
+      { headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' } }
+    );
+  } catch { /* email failure is non-fatal */ }
 }
 
 function getStatsPayload(): Record<string, unknown> {
@@ -74,6 +89,7 @@ function getStatsPayload(): Record<string, unknown> {
     free_tier_unique_ips: freeTierUnique,
     free_tier_total_calls: freeTierTotal,
     paid_api_keys_count: Object.keys(stats.paid_api_keys).length,
+    trial_extensions_granted: Object.keys(stats.trial_extensions).length,
     checked_at: nowISO()
   };
 }
@@ -540,6 +556,41 @@ async function runHTTP(): Promise<void> {
   // Smithery server card
   app.get('/.well-known/mcp/server-card.json', (req, res) => {
     res.set(cors).json({ ...getServerCard(), name: 'hs-code-classifier-mcp-server', transport: 'streamable-http', token_footprint_min: 426, token_footprint_max: 480, token_footprint_avg: 453, idempotent_tools: ['hs_classify_product', 'hs_validate_code'], circuit_breaker: false, health_endpoint: '/health', ready_endpoint: '/ready' });
+  });
+
+  // Trial extension endpoint
+  app.post('/trial-extension', async (req, res) => {
+    const { name, email, use_case } = req.body as { name?: string; email?: string; use_case?: string };
+    if (!name || !email) {
+      res.status(400).set(cors).json({ error: 'name and email are required', agent_action: 'PROVIDE_REQUIRED_FIELDS' });
+      return;
+    }
+    const emailKey = 'trial:' + email.toLowerCase().trim();
+    if (stats.trial_extensions[emailKey]) {
+      res.status(409).set(cors).json({ error: 'Trial extension already granted for this email.', upgrade_url: PRO_UPGRADE_URL, agent_action: 'INFORM_USER_TRIAL_ALREADY_USED' });
+      return;
+    }
+    const ip =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      req.ip ??
+      'unknown';
+    const month = new Date().toISOString().slice(0, 7);
+    if (!stats.free_tier_calls_by_ip[ip]) stats.free_tier_calls_by_ip[ip] = {};
+    const currentCalls = stats.free_tier_calls_by_ip[ip][month] ?? 0;
+    stats.free_tier_calls_by_ip[ip][month] = Math.max(0, currentCalls - TRIAL_EXTENSION_CALLS);
+    stats.trial_extensions[emailKey] = { name, email, use_case: use_case ?? '', ip, granted_at: nowISO() };
+    saveStats(stats);
+    await sendEmail(
+      'ojas@kordagencies.com',
+      'HS Code Classifier -- Trial Extension: ' + name,
+      '<p><b>Name:</b> ' + name + '<br><b>Email:</b> ' + email + '<br><b>Use case:</b> ' + (use_case ?? 'Not provided') + '<br><b>IP:</b> ' + ip + '<br><b>Calls granted:</b> ' + TRIAL_EXTENSION_CALLS + '</p>'
+    );
+    await sendEmail(
+      email,
+      TRIAL_EXTENSION_CALLS + ' extra free calls added -- HS Code Classifier MCP',
+      '<p>Hi ' + name + ',</p><p>Your ' + TRIAL_EXTENSION_CALLS + ' extra free calls have been added. You can keep using HS Code Classifier MCP right now -- no action needed.</p><p>When you need more, Pro is $40 for 500 calls (never expire): ' + PRO_UPGRADE_URL + '</p><p>Ojas<br>kordagencies.com</p>'
+    );
+    res.set(cors).json({ granted: true, additional_calls: TRIAL_EXTENSION_CALLS, message: TRIAL_EXTENSION_CALLS + ' extra free calls added. Check your email for confirmation.', upgrade_url: PRO_UPGRADE_URL });
   });
 
   // MCP endpoint -- new transport per request (stateless, prevents request ID collisions)
