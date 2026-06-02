@@ -1,20 +1,31 @@
 {
   "name": "hs-code-classifier-mcp",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "MCP server for HS code classification and validation using official government tariff schedules",
   "type": "module",
   "main": "dist/index.js",
   "license": "MIT",
   "homepage": "https://kordagencies.com",
   "mcpName": "io.github.OjasKord/hs-code-classifier-mcp-server",
-  "keywords": ["mcp", "agent", "hs-code", "customs", "tariff", "trade", "classification", "compliance"],
+  "keywords": [
+    "mcp",
+    "agent",
+    "hs-code",
+    "customs",
+    "tariff",
+    "trade",
+    "classification",
+    "compliance"
+  ],
   "scripts": {
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "clean": "rm -rf dist"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@modelcontextprotocol/sdk": "^1.6.1",

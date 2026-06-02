@@ -29,7 +29,7 @@ function buildMarkdown(out: ValidateOutput): string {
 
 export async function runValidate(
   params: ValidateInput
-): Promise<{ output: ValidateOutput | null; error?: { error: string; likely_cause: string; agent_action: string } }> {
+): Promise<{ output: ValidateOutput | null; error?: Record<string, unknown> }> {
   const normalizedCode = normalizeHsCode(params.hs_code);
 
   let hspingData;
@@ -42,7 +42,12 @@ export async function runValidate(
         error: {
           error: `HSPing API error: HTTP ${err.response?.status ?? 'timeout'}`,
           likely_cause: 'HSPing API is temporarily unavailable or HSPING_API_KEY is invalid',
-          agent_action: 'Retry validation once after 30 seconds. If error persists, check status at kordagencies.com.'
+          agent_action: 'Retry validation once after 30 seconds. If error persists, check status at kordagencies.com.',
+          category: 'upstream_unavailable',
+          retryable: true,
+          retry_after_ms: 30000,
+          fallback_tool: 'hs_validate_code',
+          trace_id: Math.random().toString(36).slice(2, 10)
         }
       };
     }
@@ -51,7 +56,12 @@ export async function runValidate(
       error: {
         error: err instanceof Error ? err.message : String(err),
         likely_cause: 'Unexpected error querying tariff database',
-        agent_action: 'Retry once. If error persists, contact support at ojas@kordagencies.com.'
+        agent_action: 'Retry once. If error persists, contact support at ojas@kordagencies.com.',
+        category: 'upstream_unavailable',
+        retryable: true,
+        retry_after_ms: 120000,
+        fallback_tool: 'hs_validate_code',
+        trace_id: Math.random().toString(36).slice(2, 10)
       }
     };
   }
@@ -80,9 +90,10 @@ export async function runValidate(
     country: params.country,
     checked_at: nowISO(),
     analysis_type: 'AI-powered mismatch detection -- NOT a simple database lookup',
+    token_count: 0,
     _disclaimer: LEGAL_DISCLAIMER
   };
-
+  out.token_count = Math.ceil(JSON.stringify(out).length / 4);
   return { output: out };
 }
 
