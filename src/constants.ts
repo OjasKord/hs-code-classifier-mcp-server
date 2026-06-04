@@ -1,4 +1,4 @@
-export const VERSION = '1.0.10';
+export const VERSION = '1.0.11';
 export const PRO_UPGRADE_URL = 'https://buy.stripe.com/fZubJ06o58Dj3BG8Nyebu0v';
 export const ENTERPRISE_UPGRADE_URL = 'https://buy.stripe.com/6oU3cu5k12eVegk3teebu0w';
 export const CHARACTER_LIMIT = 25000;

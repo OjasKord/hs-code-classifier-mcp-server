@@ -654,6 +654,54 @@ async function runHTTP(): Promise<void> {
     res.set(cors).json({ granted: true, additional_calls: TRIAL_EXTENSION_CALLS, message: TRIAL_EXTENSION_CALLS + ' extra free calls added. Check your email for confirmation.', upgrade_url: PRO_UPGRADE_URL });
   });
 
+  // Daily report -- JSON only, for Bizfile aggregation
+  app.post('/daily-report', async (req, res) => {
+    if (req.headers['x-stats-key'] !== process.env.STATS_KEY) {
+      res.status(401).set(cors).json({ error: 'Unauthorized' });
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const since24h = new Date(Date.now() - 86400000).toISOString();
+    const cutoffMs = Date.now() - 86400000;
+    const month = new Date().toISOString().slice(0, 7);
+
+    let limitHits = 0;
+    for (const months of Object.values(stats.free_tier_calls_by_ip)) {
+      if ((months[month] ?? 0) >= FREE_TIER_MONTHLY_LIMIT) limitHits++;
+    }
+
+    let trialCount = 0;
+    for (const record of Object.values(stats.trial_extensions)) {
+      if (record.granted_at && record.granted_at >= since24h) trialCount++;
+    }
+
+    let paidCount = 0;
+    for (const record of Object.values(stats.paid_api_keys)) {
+      const ts = record.created_at ? new Date(record.created_at).getTime() : 0;
+      if (ts >= cutoffMs) paidCount++;
+    }
+
+    const sessionKeys = await redisKeys(`${REDIS_PREFIX}:session:*:${today}`);
+    const toolBreakdown: Record<string, number> = {};
+    let calls24h = 0;
+    for (const key of sessionKeys) {
+      const calls = (await redisGet(key) as Array<{ tool: string; timestamp: string }> | null) ?? [];
+      calls.forEach(c => { if (c.tool) { toolBreakdown[c.tool] = (toolBreakdown[c.tool] ?? 0) + 1; calls24h++; } });
+    }
+    const unique24h = sessionKeys.length;
+
+    res.set(cors).json({
+      server: 'hs-code-classifier-mcp',
+      date: today,
+      calls_24h: calls24h,
+      unique_ips_24h: unique24h,
+      limit_hits: limitHits,
+      trial_extensions: trialCount,
+      paid_conversions: paidCount,
+      tool_breakdown: toolBreakdown
+    });
+  });
+
   // MCP endpoint -- new transport per request (stateless, prevents request ID collisions)
   app.post('/mcp', async (req, res) => {
     currentIP =
