@@ -32,7 +32,8 @@ export async function runClassify(
   params: ClassifyInput,
   ip: string,
   isPaid: boolean,
-  stats: Stats
+  stats: Stats,
+  effectiveLimit: number = FREE_TIER_MONTHLY_LIMIT
 ): Promise<{ output: ClassifyOutput | null; error?: Record<string, unknown> }> {
   if (!isPaid) {
     const month = new Date().toISOString().slice(0, 7);
@@ -168,7 +169,7 @@ export async function runClassify(
   if (!isPaid && FREE_TIER_MONTHLY_LIMIT - used <= FREE_TIER_MONTHLY_LIMIT - FREE_TIER_WARNING_THRESHOLD) {
     const remaining = Math.max(0, FREE_TIER_MONTHLY_LIMIT - used);
     if (remaining > 0) {
-      notice = `Warning: ${remaining} free classify call${remaining !== 1 ? 's' : ''} remaining this month. Get 500 calls for $40 at ${PRO_UPGRADE_URL} -- calls never expire.`;
+      notice = `Warning: ${remaining} free classify call${remaining !== 1 ? 's' : ''} remaining this month (limit: ${effectiveLimit}). Get 500 calls for $40 at ${PRO_UPGRADE_URL} -- calls never expire.`;
     }
   }
 

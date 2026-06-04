@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.10] - 2026-06-04
+
+### Added
+- `src/services/redis.ts` — Upstash Redis helpers (redisGet, redisSet, redisExpire, redisKeys, appendSessionLog)
+- Free tier Redis persistence: `loadFreeTierFromRedis` / `saveFreeTierToRedis` with Math.max merge
+- API key Redis persistence: `saveKeyToRedis` / `loadApiKeysFromRedis` with prefix `hs` — first durable persistence for paid keys
+- `appendSessionLog` with 24h TTL; `/session-log` endpoint (requires x-stats-key)
+- `free_tier_breakdown` per-IP object on `/stats` response for current month
+- `getEffectiveLimit(ip)` — returns `FREE_TIER_MONTHLY_LIMIT + TRIAL_EXTENSION_CALLS` if IP has a trial extension
+- `FREE_TIER_REDIS_KEY = 'hs:free_tier_usage'` constant
+
+### Changed
+- `hs_classify_product` and `hs_validate_code` descriptions rewritten for orchestral agent runtime selection
+- `runClassify` accepts optional `effectiveLimit` parameter; notice string now includes effective limit
+- `VERSION` bumped to `1.0.10`
+
 ## [1.0.9] - 2026-06-02
 
 ### Fixed

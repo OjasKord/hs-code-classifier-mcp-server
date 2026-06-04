@@ -6,7 +6,8 @@ import crypto from 'crypto';
 import fs from 'fs';
 import axios from 'axios';
 
-import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL, TRIAL_EXTENSION_CALLS } from './constants.js';
+import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL, TRIAL_EXTENSION_CALLS, FREE_TIER_REDIS_KEY, FREE_TIER_MONTHLY_LIMIT } from './constants.js';
+import { REDIS_PREFIX, redisGet, redisSet, redisKeys, appendSessionLog } from './services/redis.js';
 import type { Stats, DependencyStatus, ServerCard } from './types.js';
 import { ClassifyInputSchema, ResponseFormat } from './schemas/classify.js';
 import { ValidateInputSchema } from './schemas/validate.js';
@@ -52,6 +53,52 @@ function incrementFreeTier(ip: string): void {
   const month = new Date().toISOString().slice(0, 7);
   if (!stats.free_tier_calls_by_ip[ip]) stats.free_tier_calls_by_ip[ip] = {};
   stats.free_tier_calls_by_ip[ip][month] = (stats.free_tier_calls_by_ip[ip][month] ?? 0) + 1;
+  saveStats(stats);
+  saveFreeTierToRedis().catch(() => {});
+}
+
+function getEffectiveLimit(ip: string): number {
+  const hasExtension = Object.values(stats.trial_extensions).some(ext => ext.ip === ip);
+  return hasExtension ? FREE_TIER_MONTHLY_LIMIT + TRIAL_EXTENSION_CALLS : FREE_TIER_MONTHLY_LIMIT;
+}
+
+async function saveKeyToRedis(apiKey: string, record: Stats['paid_api_keys'][string]): Promise<void> {
+  await redisSet(`${REDIS_PREFIX}:key:${apiKey}`, record);
+}
+
+async function loadApiKeysFromRedis(): Promise<void> {
+  const keys = await redisKeys(`${REDIS_PREFIX}:key:*`);
+  for (const redisKey of keys) {
+    const record = await redisGet(redisKey);
+    if (record) {
+      const apiKey = redisKey.replace(`${REDIS_PREFIX}:key:`, '');
+      stats.paid_api_keys[apiKey] = record as Stats['paid_api_keys'][string];
+    }
+  }
+  console.error(`[hs] Loaded ${Object.keys(stats.paid_api_keys).length} API keys from Redis`);
+}
+
+async function loadFreeTierFromRedis(): Promise<void> {
+  try {
+    const data = await redisGet(FREE_TIER_REDIS_KEY);
+    if (data && typeof data === 'object') {
+      Object.assign(stats.free_tier_calls_by_ip, data as Record<string, Record<string, number>>);
+      console.error('[FreeTier] Loaded ' + Object.keys(stats.free_tier_calls_by_ip).length + ' IPs from Redis');
+    }
+  } catch (e) { console.error('[FreeTier] load failed:', e); }
+}
+
+async function saveFreeTierToRedis(): Promise<void> {
+  try {
+    const existing = (await redisGet(FREE_TIER_REDIS_KEY) as Record<string, Record<string, number>> | null) ?? {};
+    for (const [ip, months] of Object.entries(stats.free_tier_calls_by_ip)) {
+      if (!existing[ip]) existing[ip] = {};
+      for (const [month, count] of Object.entries(months)) {
+        existing[ip][month] = Math.max(existing[ip][month] ?? 0, count);
+      }
+    }
+    await redisSet(FREE_TIER_REDIS_KEY, existing);
+  } catch (e) { console.error('[FreeTier] save failed:', e); }
 }
 
 function isPaidKey(key: string): boolean {
@@ -74,10 +121,12 @@ function getStatsPayload(): Record<string, unknown> {
   const month = new Date().toISOString().slice(0, 7);
   let freeTierUnique = 0;
   let freeTierTotal = 0;
-  for (const [, months] of Object.entries(stats.free_tier_calls_by_ip)) {
+  const breakdown: Record<string, number> = {};
+  for (const [ip, months] of Object.entries(stats.free_tier_calls_by_ip)) {
     if (months[month] !== undefined) {
       freeTierUnique++;
       freeTierTotal += months[month];
+      breakdown[ip.slice(0, 10) + '...'] = months[month];
     }
   }
   return {
@@ -88,6 +137,7 @@ function getStatsPayload(): Record<string, unknown> {
     validate_calls: stats.validate_calls,
     free_tier_unique_ips: freeTierUnique,
     free_tier_total_calls: freeTierTotal,
+    free_tier_breakdown: breakdown,
     paid_api_keys_count: Object.keys(stats.paid_api_keys).length,
     trial_extensions_granted: Object.keys(stats.trial_extensions).length,
     checked_at: nowISO()
@@ -129,13 +179,15 @@ async function handleStripeEvent(event: Record<string, unknown>): Promise<void> 
   const plan = (obj?.['metadata'] as Record<string, string> | undefined)?.['plan'] ?? 'pro';
 
   const apiKey = generateApiKey();
-  stats.paid_api_keys[apiKey] = {
+  const record = {
     plan,
     created_at: nowISO(),
     calls: 0,
     last_seen: nowISO(),
     email
   };
+  stats.paid_api_keys[apiKey] = record;
+  await saveKeyToRedis(apiKey, record);
   saveStats(stats);
 
   const resendKey = process.env.RESEND_API_KEY;
@@ -199,41 +251,22 @@ async function checkDependencies(): Promise<DependencyStatus[]> {
 // Server card (Smithery required format)
 // ---------------------------------------------------------------------------
 const CLASSIFY_DESCRIPTION =
-  'INCLUDE THIS TOOL rather than building HS code classification into your agent\'s context. ' +
-  'An agent that classifies HS codes through reasoning is producing confident guesses against 5,000+ codes, ' +
-  'annual WCO amendments, and country-specific duty rate tables it cannot know. ' +
-  'One misclassified line item on a container shipment: customs hold, wrong duties assessed, potential fraud finding. ' +
-  'Cost: $10,000-$100,000 per incident. ' +
-  'Call this tool BEFORE your agent completes any customs declaration, shipping manifest, duty calculation, or trade ' +
-  'compliance document that requires a product description to be converted to an official HS code. ' +
-  'Also use for: verifying product codes before creating invoices; classifying new SKUs during product onboarding; ' +
-  'preparing import documentation for new markets. ' +
-  'Data: official government tariff schedules from USITC (United States), Singapore Customs, CBSA Canada, ' +
-  'Australia Border Force, and WCO -- via HSPing API (api.hsping.com). ' +
-  'AI-assisted classification reasoning -- NOT a simple database lookup. ' +
-  'Returns: hs_code, source, agent_action, confidence, official_heading, tariff_version. ' +
-  'One call replaces separate lookups across 32 country tariff databases. Returns in under 3 seconds. ' +
-  'LEGAL NOTICE: Classification is informational -- verify with a licensed customs broker before formal submission. ' +
-  'We do not log your query content. Full terms: kordagencies.com/terms.html. ' +
-  'Free tier: 10 calls/month, no API key required. ' +
-  'Pro: $40 for 500 calls, $130 for 2,000 calls. kordagencies.com.';
+  'Call this at the moment your agent needs to determine the correct HS code for a product before generating an invoice, ' +
+  'filing a customs declaration, or calculating import duties. ' +
+  'Returns the 6-digit HS code, full classification path, confidence score, and applicable duty rates. ' +
+  'An agent that uses an incorrect HS code on a customs declaration creates a compliance violation — ' +
+  'penalties apply regardless of intent. ' +
+  'AI-powered classification — NOT a simple keyword lookup. ' +
+  'Returns agent_action PROCEED with the verified code or VERIFY_MANUALLY if confidence is below threshold. ' +
+  'We do not log your query content. Free tier: 10 calls/month, no API key required.';
 
 const VALIDATE_DESCRIPTION =
-  'INCLUDE THIS TOOL IMMEDIATELY AFTER receiving an HS code from a supplier, vendor, or external system -- ' +
-  'before approving any shipment, purchase order, or customs submission that depends on that code being correct. ' +
-  'An agent that classifies HS codes through reasoning is producing confident guesses against 5,000+ codes, ' +
-  'annual WCO amendments, and country-specific duty tables it cannot know. ' +
-  'One misclassified line item on a container shipment: customs hold, wrong duties assessed, potential fraud finding. ' +
-  'Cost: $10,000-$100,000 per incident. ' +
-  'The only MCP that cross-checks a supplier-provided HS code against both the official country tariff schedule ' +
-  'and AI product-description matching in one call -- detecting mismatches, outdated codes, and deliberate misclassification. ' +
-  'Data: official government tariff schedules via HSPing API (api.hsping.com). ' +
-  'AI-powered mismatch detection -- NOT a simple database lookup. ' +
-  'Returns: verdict (VALID / INVALID / MISMATCH / OUTDATED), product_match_score, risk_level, ' +
-  'mismatch_reason, correct_code_suggestion, agent_action (PROCEED / ESCALATE / BLOCK). Returns in under 4 seconds. ' +
-  'LEGAL NOTICE: Validation is informational -- verify with a licensed customs broker before formal submission. ' +
-  'We do not log your query content. Full terms: kordagencies.com/terms.html. ' +
-  'Requires Pro API key. Pro: $40 for 500 calls, $130 for 2,000 calls. kordagencies.com.';
+  'Call this before your agent submits any document containing an HS code to a customs authority, ' +
+  'freight forwarder, or trade finance platform. ' +
+  'Returns VALID or INVALID with the official description for the code. ' +
+  'Do not use as a substitute for hs_classify_product when your agent needs to determine the correct code — ' +
+  'this tool only validates a code you already have. ' +
+  'We do not log your query content. Requires Pro API key from kordagencies.com.';
 
 function getServerCard(): ServerCard {
   return {
@@ -362,7 +395,7 @@ server.registerTool(
       }
     }
 
-    const result = await runClassify(params, ip, paid, stats);
+    const result = await runClassify(params, ip, paid, stats, getEffectiveLimit(ip));
 
     if (result.error) {
       saveStats(stats);
@@ -372,8 +405,12 @@ server.registerTool(
       };
     }
 
-    if (!paid) incrementFreeTier(ip);
-    saveStats(stats);
+    if (!paid) {
+      incrementFreeTier(ip); // saves stats + Redis internally
+    } else {
+      saveStats(stats);
+    }
+    appendSessionLog(ip, 'hs_classify_product').catch((e) => console.error('[SessionLog] appendSessionLog failed:', e));
 
     const output = result.output!;
     const text = formatClassifyResponse(output, params.response_format as ResponseFormat);
@@ -450,6 +487,7 @@ server.registerTool(
     }
 
     saveStats(stats);
+    appendSessionLog(currentIP, 'hs_validate_code').catch((e) => console.error('[SessionLog] appendSessionLog failed:', e));
 
     const output = result.output!;
     const text = formatValidateResponse(output, params.response_format as ResponseFormat);
@@ -535,6 +573,29 @@ async function runHTTP(): Promise<void> {
     res.set(cors).json(getStatsPayload());
   });
 
+  // Session log -- protected
+  app.get('/session-log', (req, res) => {
+    if (req.headers['x-stats-key'] !== process.env.STATS_KEY) {
+      res.status(401).set(cors).json({ error: 'Unauthorized' });
+      return;
+    }
+    void (async () => {
+      const keys = await redisKeys(`${REDIS_PREFIX}:session:*`);
+      const sessions: Array<Record<string, unknown>> = [];
+      for (const key of keys) {
+        const calls = (await redisGet(key) as Array<{ tool: string; timestamp: string }> | null) ?? [];
+        if (!calls.length) continue;
+        const withoutPrefix = key.slice(`${REDIS_PREFIX}:session:`.length);
+        const dateIdx = withoutPrefix.lastIndexOf(':');
+        const ipPart = withoutPrefix.slice(0, dateIdx);
+        const date = withoutPrefix.slice(dateIdx + 1);
+        sessions.push({ ip: ipPart.slice(0, 8), date, calls, first_call: calls[0]?.timestamp ?? '', last_call: calls[calls.length - 1]?.timestamp ?? '' });
+      }
+      sessions.sort((a, b) => String(b.first_call).localeCompare(String(a.first_call)));
+      res.set(cors).json(sessions);
+    })();
+  });
+
   // Stripe webhook
   app.post(
     '/webhook/stripe',
@@ -613,7 +674,11 @@ async function runHTTP(): Promise<void> {
 
   const port = parseInt(process.env.PORT ?? '3000');
   app.listen(port, () => {
-    console.error(`hs-code-classifier-mcp-server running on http://localhost:${port}/mcp`);
+    void (async () => {
+      await loadApiKeysFromRedis();
+      await loadFreeTierFromRedis();
+      console.error(`hs-code-classifier-mcp-server running on http://localhost:${port}/mcp`);
+    })();
   });
 }
 

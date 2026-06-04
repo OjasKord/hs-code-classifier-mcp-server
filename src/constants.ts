@@ -1,4 +1,4 @@
-export const VERSION = '1.0.9';
+export const VERSION = '1.0.10';
 export const PRO_UPGRADE_URL = 'https://buy.stripe.com/fZubJ06o58Dj3BG8Nyebu0v';
 export const ENTERPRISE_UPGRADE_URL = 'https://buy.stripe.com/6oU3cu5k12eVegk3teebu0w';
 export const CHARACTER_LIMIT = 25000;
@@ -7,6 +7,7 @@ export const FREE_TIER_MONTHLY_LIMIT = 10;
 export const FREE_TIER_WARNING_THRESHOLD = 8;
 export const TRIAL_EXTENSION_CALLS = 10;
 export const PERSIST_FILE = '/tmp/hs_classifier_stats.json';
+export const FREE_TIER_REDIS_KEY = 'hs:free_tier_usage';
 
 export const LEGAL_DISCLAIMER =
   'Results sourced directly from official government tariff schedules via HSPing API (api.hsping.com). ' +
