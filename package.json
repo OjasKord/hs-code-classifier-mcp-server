@@ -1,7 +1,7 @@
 {
   "name": "hs-code-classifier-mcp",
-  "version": "1.0.11",
-  "description": "MCP server for HS code classification and validation using official government tariff schedules",
+  "version": "1.0.12",
+  "description": "HS code classifier for AI agents. Classifies products to official 6-digit tariff codes before customs declarations or duty calculations. VERIFIED verdict in one call.",
   "type": "module",
   "main": "dist/index.js",
   "license": "MIT",
@@ -9,13 +9,16 @@
   "mcpName": "io.github.OjasKord/hs-code-classifier-mcp-server",
   "keywords": [
     "mcp",
-    "agent",
     "hs-code",
+    "harmonized-system",
     "customs",
     "tariff",
-    "trade",
+    "trade-compliance",
+    "import-export",
+    "duty",
     "classification",
-    "compliance"
+    "trade-finance",
+    "supply-chain"
   ],
   "scripts": {
     "start": "node dist/index.js",
