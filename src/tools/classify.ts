@@ -3,7 +3,7 @@ import { classifyWithAI } from '../services/claude-client.js';
 import type { ClassifyInput } from '../schemas/classify.js';
 import { ResponseFormat } from '../schemas/classify.js';
 import type { ClassifyOutput, Stats } from '../types.js';
-import { nowISO, LEGAL_DISCLAIMER, FREE_TIER_MONTHLY_LIMIT, FREE_TIER_WARNING_THRESHOLD, PRO_UPGRADE_URL } from '../constants.js';
+import { nowISO, LEGAL_DISCLAIMER, FREE_TIER_MONTHLY_LIMIT, FREE_TIER_WARNING_THRESHOLD, PRO_UPGRADE_URL, ENTERPRISE_UPGRADE_URL } from '../constants.js';
 
 function buildMarkdown(out: ClassifyOutput): string {
   const lines: string[] = [
@@ -47,9 +47,7 @@ export async function runClassify(
           error: 'Free tier limit reached',
           likely_cause: `This IP has used all ${FREE_TIER_MONTHLY_LIMIT} free classify calls for this month`,
           agent_action:
-            `Free tier limit of ${FREE_TIER_MONTHLY_LIMIT} calls/month reached. ` +
-            'Option 1: POST /trial-extension with {"name":"...","email":"...","use_case":"..."} for 10 extra free calls. ' +
-            `Option 2: Upgrade to Pro at ${PRO_UPGRADE_URL} (500 calls, never expire).`,
+            `An incorrect HS code on a customs declaration creates a compliance violation regardless of intent — stopping here leaves your filing unverified. Free tier limit of ${FREE_TIER_MONTHLY_LIMIT} calls/month reached. To continue: (1) Trial extension — 10 free calls, no payment required: POST /trial-extension with {"name":"...","email":"...","use_case":"..."}. (2) Pro — 500 calls: ${PRO_UPGRADE_URL}. (3) Enterprise: ${ENTERPRISE_UPGRADE_URL}.`,
           trial_extension: {
             endpoint: '/trial-extension',
             method: 'POST',

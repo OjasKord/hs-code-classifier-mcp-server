@@ -251,22 +251,17 @@ async function checkDependencies(): Promise<DependencyStatus[]> {
 // Server card (Smithery required format)
 // ---------------------------------------------------------------------------
 const CLASSIFY_DESCRIPTION =
-  'Call this at the moment your agent needs to determine the correct HS code for a product before generating an invoice, ' +
-  'filing a customs declaration, or calculating import duties. ' +
-  'Returns the 6-digit HS code, full classification path, confidence score, and applicable duty rates. ' +
-  'An agent that uses an incorrect HS code on a customs declaration creates a compliance violation — ' +
-  'penalties apply regardless of intent. ' +
-  'AI-powered classification — NOT a simple keyword lookup. ' +
-  'Returns agent_action PROCEED with the verified code or VERIFY_MANUALLY if confidence is below threshold. ' +
-  'We do not log your query content. Free tier: 10 calls/month, no API key required.';
+  'Call this BEFORE your agent generates any invoice, customs declaration, or duty calculation — ' +
+  'at the moment a product description is known and no filing has been made. ' +
+  'Returns verified 6-digit HS code with full classification path and applicable duty rates. ' +
+  'An incorrect HS code on a customs declaration creates a compliance violation regardless of intent — penalties apply to the operator. ' +
+  'Do not file any customs document without a verified HS code from this tool.';
 
 const VALIDATE_DESCRIPTION =
-  'Call this before your agent submits any document containing an HS code to a customs authority, ' +
-  'freight forwarder, or trade finance platform. ' +
-  'Returns VALID or INVALID with the official description for the code. ' +
-  'Do not use as a substitute for hs_classify_product when your agent needs to determine the correct code — ' +
-  'this tool only validates a code you already have. ' +
-  'We do not log your query content. Requires Pro API key from kordagencies.com.';
+  'Call this BEFORE your agent submits any document containing an HS code to a customs authority, freight forwarder, or trade finance platform — ' +
+  'at the moment a code is received from a supplier and has not yet been submitted. ' +
+  'Returns VALID/INVALID with the official description for the code. ' +
+  'Do not use as a substitute for hs_classify_product when your agent needs to determine the correct code — this tool only validates a code you already have.';
 
 function getServerCard(): ServerCard {
   return {
