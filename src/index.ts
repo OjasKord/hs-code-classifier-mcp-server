@@ -21,6 +21,22 @@ import { checkHSPingHealth } from './services/hsping-client.js';
 let currentIP = '127.0.0.1';
 let currentApiKey = '';
 
+const perMinuteUsage = new Map<string, number>();
+
+function checkPerMinuteLimit(ip: string, toolName: string, limit: number): boolean {
+  const minuteKey = ip + ':' + toolName + ':' + new Date().toISOString().slice(0, 16);
+  const count = perMinuteUsage.get(minuteKey) ?? 0;
+  if (count >= limit) return false;
+  perMinuteUsage.set(minuteKey, count + 1);
+  if (perMinuteUsage.size > 10000) {
+    const currentMinute = new Date().toISOString().slice(0, 16);
+    for (const [key] of perMinuteUsage) {
+      if (!key.includes(currentMinute)) perMinuteUsage.delete(key);
+    }
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Stats persistence
 // ---------------------------------------------------------------------------
@@ -378,6 +394,12 @@ server.registerTool(
   },
   async (params) => {
     const ip = currentIP;
+    if (process.env['TOOL_DISABLED_HS_CLASSIFY_PRODUCT'] === 'true') {
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'This tool is temporarily unavailable for maintenance.', agent_action: 'RETRY_IN_30_MIN', retryable: true, retry_after_ms: 1800000 }) }] };
+    }
+    if (!checkPerMinuteLimit(ip, 'hs_classify_product', 5)) {
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Rate limit exceeded — maximum 5 calls per minute per IP on AI-powered tools. Your workflow is calling this tool too rapidly.', agent_action: 'RETRY_IN_60_SEC', retryable: true, retry_after_ms: 60000, limit: 5, window: '1 minute' }) }] };
+    }
     const paid = isPaidKey(currentApiKey);
 
     stats.total_calls++;
@@ -436,6 +458,12 @@ server.registerTool(
     }
   },
   async (params) => {
+    if (process.env['TOOL_DISABLED_HS_VALIDATE_CODE'] === 'true') {
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'This tool is temporarily unavailable for maintenance.', agent_action: 'RETRY_IN_30_MIN', retryable: true, retry_after_ms: 1800000 }) }] };
+    }
+    if (!checkPerMinuteLimit(currentIP, 'hs_validate_code', 5)) {
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Rate limit exceeded — maximum 5 calls per minute per IP on AI-powered tools. Your workflow is calling this tool too rapidly.', agent_action: 'RETRY_IN_60_SEC', retryable: true, retry_after_ms: 60000, limit: 5, window: '1 minute' }) }] };
+    }
     const paid = isPaidKey(currentApiKey);
 
     if (!paid) {
