@@ -199,6 +199,11 @@ export async function runClassify(
     token_count: 0,
     _disclaimer: LEGAL_DISCLAIMER
   };
+  if (out.verdict === 'AMBIGUOUS') {
+    out.hold_reason = allResults.length + ' possible HS codes identified for this product -- classification is ambiguous and customs authorities may assess differently';
+    out.retry_after = null;
+    out.escalation_path = 'Escalate to a licensed customs broker to determine the correct HS code before submitting customs declaration';
+  }
   out.token_count = Math.ceil(JSON.stringify(out).length / 4);
   return { output: out };
 }

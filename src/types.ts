@@ -57,6 +57,9 @@ export interface ClassifyOutput {
   total_matches: number;
   checked_at: string;
   analysis_type: string;
+  hold_reason?: string;
+  retry_after?: number | null;
+  escalation_path?: string | null;
   _upgrade_notice?: string;
   _notice?: string;
   token_count?: number;
@@ -77,6 +80,9 @@ export interface ValidateOutput {
   country: string;
   checked_at: string;
   analysis_type: string;
+  hold_reason?: string;
+  retry_after?: number | null;
+  escalation_path?: string | null;
   token_count?: number;
   _disclaimer: string;
 }

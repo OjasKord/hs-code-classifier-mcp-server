@@ -93,6 +93,19 @@ export async function runValidate(
     token_count: 0,
     _disclaimer: LEGAL_DISCLAIMER
   };
+  if (out.verdict === 'MISMATCH') {
+    out.hold_reason = aiResult.mismatch_reason || 'HS code ' + normalizedCode + ' does not match product description in ' + params.country + ' tariff schedule';
+    out.retry_after = null;
+    out.escalation_path = aiResult.correct_code_suggestion
+      ? 'Use suggested code ' + aiResult.correct_code_suggestion + ' instead and verify with customs broker before submitting declaration'
+      : 'Escalate to licensed customs broker to identify correct HS code before submitting declaration';
+  } else if (out.verdict === 'OUTDATED') {
+    out.hold_reason = 'HS code ' + normalizedCode + ' has been updated or reclassified in the ' + params.country + ' tariff schedule';
+    out.retry_after = null;
+    out.escalation_path = aiResult.correct_code_suggestion
+      ? 'Use updated code ' + aiResult.correct_code_suggestion + ' -- verify current classification with customs authority before submitting'
+      : 'Verify current HS code classification with customs authority or broker before submitting declaration';
+  }
   out.token_count = Math.ceil(JSON.stringify(out).length / 4);
   return { output: out };
 }

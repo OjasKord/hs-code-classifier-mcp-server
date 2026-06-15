@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.18] - 2026-06-15
+- feat: add hold_reason, retry_after, escalation_path to AMBIGUOUS (classify) and MISMATCH/OUTDATED (validate) responses
+
 ## [1.0.17] - 2026-06-15
 - fix: detect SmitheryBot user-agent and return mock response to prevent HSPing credit consumption during scanner runs
 
