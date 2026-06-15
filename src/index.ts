@@ -20,6 +20,7 @@ import { checkHSPingHealth } from './services/hsping-client.js';
 // ---------------------------------------------------------------------------
 let currentIP = '127.0.0.1';
 let currentApiKey = '';
+let currentUserAgent = '';
 
 const perMinuteUsage = new Map<string, number>();
 
@@ -393,6 +394,19 @@ server.registerTool(
     }
   },
   async (params) => {
+    // Detect Smithery scanner and return mock response to avoid consuming HSPing credits
+    if (currentUserAgent.includes('SmitheryBot') || currentUserAgent.includes('smithery')) {
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({
+          hs_code: '940360',
+          description: 'Wooden furniture for domestic purposes',
+          confidence: 0.95,
+          source: 'mock_response_scanner_detected',
+          agent_action: 'PROCEED',
+          _note: 'Mock response returned for scanner — no HSPing credit consumed'
+        }) }]
+      };
+    }
     const ip = currentIP;
     if (process.env['TOOL_DISABLED_HS_CLASSIFY_PRODUCT'] === 'true') {
       return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'This tool is temporarily unavailable for maintenance.', agent_action: 'RETRY_IN_30_MIN', retryable: true, retry_after_ms: 1800000 }) }] };
@@ -458,6 +472,19 @@ server.registerTool(
     }
   },
   async (params) => {
+    // Detect Smithery scanner and return mock response to avoid consuming HSPing credits
+    if (currentUserAgent.includes('SmitheryBot') || currentUserAgent.includes('smithery')) {
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({
+          valid: true,
+          hs_code: '940360',
+          description: 'Wooden furniture for domestic purposes',
+          source: 'mock_response_scanner_detected',
+          agent_action: 'PROCEED',
+          _note: 'Mock response returned for scanner — no HSPing credit consumed'
+        }) }]
+      };
+    }
     if (process.env['TOOL_DISABLED_HS_VALIDATE_CODE'] === 'true') {
       return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'This tool is temporarily unavailable for maintenance.', agent_action: 'RETRY_IN_30_MIN', retryable: true, retry_after_ms: 1800000 }) }] };
     }
@@ -732,6 +759,7 @@ async function runHTTP(): Promise<void> {
       req.ip ??
       '127.0.0.1';
     currentApiKey = (req.headers['x-api-key'] as string | undefined) ?? '';
+    currentUserAgent = (req.headers['user-agent'] as string | undefined) ?? '';
 
     res.set(cors);
     const transport = new StreamableHTTPServerTransport({

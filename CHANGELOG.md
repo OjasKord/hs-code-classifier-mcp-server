@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.17] - 2026-06-15
+- fix: detect SmitheryBot user-agent and return mock response to prevent HSPing credit consumption during scanner runs
+
 ## [1.0.16] - 2026-06-11
 - fix: bump version past existing npm publish (1.0.15 already on registry)
 
