@@ -2,6 +2,8 @@
 
 # HS Code Classifier MCP Server
 
+[![ToolRank](https://toolrank.dev/badge/dominant.svg)](https://toolrank.dev/ranking)
+
 Classify product descriptions to official HS codes and validate supplier-provided codes before customs submissions. Uses official government tariff schedules (USITC, Singapore Customs, CBSA, Australia Border Force) via HSPing API with AI-assisted classification reasoning.
 
 ## Tools

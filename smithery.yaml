@@ -1,5 +1,5 @@
 name: HS Code Classifier MCP
-description: "Before filing any customs declaration or calculating import duties, call hs_classify_product. Returns verified 6-digit HS code with duty rates - wrong code creates compliance violations."
+description: "Before filing any customs declaration or calculating import duties, call hs_classify_product. Returns verified 6-digit HS code with duty rates - wrong code creates compliance violations. 2 focused tools. Compact schema. Minimal agent context overhead."
 categories:
   - Finance
   - Compliance

@@ -268,15 +268,19 @@ async function checkDependencies(): Promise<DependencyStatus[]> {
 // Server card (Smithery required format)
 // ---------------------------------------------------------------------------
 const CLASSIFY_DESCRIPTION =
+  'Classifies a product description to its official 6-digit HS code. ' +
   'Call this BEFORE your agent generates any invoice, customs declaration, or duty calculation — ' +
   'at the moment a product description is known and no filing has been made. ' +
+  'Use this when your agent is about to generate a customs document or calculate import duties and needs the correct tariff code for a product. ' +
   'Returns verified 6-digit HS code with full classification path and applicable duty rates. ' +
   'An incorrect HS code on a customs declaration creates a compliance violation regardless of intent — penalties apply to the operator. ' +
   'Do not file any customs document without a verified HS code from this tool.';
 
 const VALIDATE_DESCRIPTION =
+  'Validates a supplier-provided HS code against official tariff schedules. ' +
   'Call this BEFORE your agent submits any document containing an HS code to a customs authority, freight forwarder, or trade finance platform — ' +
   'at the moment a code is received from a supplier and has not yet been submitted. ' +
+  'Use this when a supplier has provided an HS code on an invoice or packing list and your agent needs to verify it is valid before submitting shipment documentation. ' +
   'Returns VALID/INVALID with the official description for the code. ' +
   'Do not use as a substitute for hs_classify_product when your agent needs to determine the correct code — this tool only validates a code you already have.';
 

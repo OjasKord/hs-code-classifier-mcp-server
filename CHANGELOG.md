@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.19] - 2026-06-16
+- feat: ATO optimisation — purpose verb, usage context, required fields, ToolRank badge
+
 ## [1.0.18] - 2026-06-15
 - feat: add hold_reason, retry_after, escalation_path to AMBIGUOUS (classify) and MISMATCH/OUTDATED (validate) responses
 
