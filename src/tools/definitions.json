@@ -1,0 +1,70 @@
+{
+  "tools": [
+    {
+      "name": "hs_classify_product",
+      "description": "Classifies a product description to its official 6-digit HS code. Call this BEFORE your agent generates any invoice, customs declaration, or duty calculation — at the moment a product description is known and no filing has been made. Use this when your agent is about to generate a customs document or calculate import duties and needs the correct tariff code for a product. Returns verified 6-digit HS code with full classification path and applicable duty rates. An incorrect HS code on a customs declaration creates a compliance violation regardless of intent — penalties apply to the operator. Do not file any customs document without a verified HS code from this tool.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "product_description": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "description": "Description of the product to classify. Be specific -- include material, function, and intended use (e.g. \"solid oak dining chair with upholstered seat\", \"stainless steel 500ml insulated water bottle\"). More specific descriptions return higher-confidence codes."
+          },
+          "country": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "default": "US",
+            "description": "2-letter ISO country code for the importing country tariff schedule. Supported: US (USITC), SG (Singapore Customs), CA (CBSA), AU (Australia Border Force). Defaults to US. Use the destination country for import classification."
+          },
+          "response_format": {
+            "type": "string",
+            "enum": ["markdown", "json"],
+            "default": "json",
+            "description": "Output format: 'json' for machine-readable agent use (recommended) or 'markdown' for human-readable display"
+          }
+        },
+        "required": ["product_description"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hs_validate_code",
+      "description": "Validates a supplier-provided HS code against official tariff schedules. Call this BEFORE your agent submits any document containing an HS code to a customs authority, freight forwarder, or trade finance platform — at the moment a code is received from a supplier and has not yet been submitted. Use this when a supplier has provided an HS code on an invoice or packing list and your agent needs to verify it is valid before submitting shipment documentation. Returns VALID/INVALID with the official description for the code. Do not use as a substitute for hs_classify_product when your agent needs to determine the correct code — this tool only validates a code you already have.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "hs_code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 14,
+            "description": "The HS code to validate as provided by the supplier or external system. Accepts 6, 8, or 10-digit codes with or without dots (e.g. \"940360\", \"9403.60.80\", \"9403608093\"). Dots and spaces are stripped automatically."
+          },
+          "product_description": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "description": "Description of the product the supplier assigned this HS code to. Used for AI mismatch detection -- include material, function, and use (e.g. \"solid oak dining chair\", \"stainless steel water bottle 500ml\")."
+          },
+          "country": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "default": "US",
+            "description": "2-letter ISO country code for the destination country tariff schedule. Defaults to US. Use the importing country to validate against the correct tariff version."
+          },
+          "response_format": {
+            "type": "string",
+            "enum": ["markdown", "json"],
+            "default": "json",
+            "description": "Output format: 'json' for machine-readable agent use (recommended) or 'markdown' for human-readable display"
+          }
+        },
+        "required": ["hs_code", "product_description"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}
