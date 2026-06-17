@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import axios from 'axios';
 
-import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL, TRIAL_EXTENSION_CALLS, FREE_TIER_REDIS_KEY, FREE_TIER_MONTHLY_LIMIT } from './constants.js';
+import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL, TRIAL_EXTENSION_CALLS, FREE_TIER_REDIS_KEY, FREE_TIER_MONTHLY_LIMIT, ALLOWED_PAYMENT_LINK_IDS } from './constants.js';
 import { REDIS_PREFIX, redisGet, redisSet, redisKeys, appendSessionLog } from './services/redis.js';
 import type { Stats, DependencyStatus, ServerCard } from './types.js';
 import { ClassifyInputSchema, ResponseFormat } from './schemas/classify.js';
@@ -192,6 +192,11 @@ async function handleStripeEvent(event: Record<string, unknown>): Promise<void> 
 
   const session = event['data'] as Record<string, unknown> | undefined;
   const obj = session?.['object'] as Record<string, unknown> | undefined;
+  const paymentLinkId = obj?.['payment_link'] as string | undefined;
+  if (paymentLinkId && !ALLOWED_PAYMENT_LINK_IDS.includes(paymentLinkId)) {
+    console.error('[stripe] Webhook received but payment link ' + paymentLinkId + ' not for this server — ignoring.');
+    return;
+  }
   const email = obj?.['customer_email'] as string | undefined ?? 'unknown';
   const plan = (obj?.['metadata'] as Record<string, string> | undefined)?.['plan'] ?? 'pro';
 
@@ -589,13 +594,32 @@ async function runHTTP(): Promise<void> {
   validateEnv();
 
   const app = express();
-  app.use(express.json());
 
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, x-api-key, x-stats-key'
   };
+
+  // Webhook must be registered before express.json() to receive raw body for signature verification
+  app.post(
+    '/webhook/stripe',
+    express.raw({ type: 'application/json' }),
+    (req, res) => {
+      const sig = req.headers['stripe-signature'] as string;
+      const secret = process.env.STRIPE_WEBHOOK_SECRET ?? '';
+      if (!verifyStripeSignature(req.body.toString(), sig, secret)) {
+        res.status(400).set(cors).json({ error: 'Invalid signature' });
+        return;
+      }
+      handleStripeEvent(JSON.parse(req.body.toString()) as Record<string, unknown>).catch(err =>
+        console.error('[stripe] handler error:', err)
+      );
+      res.set(cors).json({ received: true });
+    }
+  );
+
+  app.use(express.json());
 
   // Global OPTIONS preflight -- must return 200 with full CORS headers
   app.options('*', (req, res) => { res.status(200).set(cors).end(); });
@@ -649,24 +673,6 @@ async function runHTTP(): Promise<void> {
       res.set(cors).json(sessions);
     })();
   });
-
-  // Stripe webhook
-  app.post(
-    '/webhook/stripe',
-    express.raw({ type: 'application/json' }),
-    (req, res) => {
-      const sig = req.headers['stripe-signature'] as string;
-      const secret = process.env.STRIPE_WEBHOOK_SECRET ?? '';
-      if (!verifyStripeSignature(req.body.toString(), sig, secret)) {
-        res.status(400).set(cors).json({ error: 'Invalid signature' });
-        return;
-      }
-      handleStripeEvent(JSON.parse(req.body.toString()) as Record<string, unknown>).catch(err =>
-        console.error('[stripe] handler error:', err)
-      );
-      res.set(cors).json({ received: true });
-    }
-  );
 
   // Smithery server card
   app.get('/.well-known/mcp/server-card.json', (req, res) => {

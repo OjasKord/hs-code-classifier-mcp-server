@@ -1,6 +1,7 @@
-export const VERSION = '1.0.19';
+export const VERSION = '1.0.20';
 export const PRO_UPGRADE_URL = 'https://buy.stripe.com/fZubJ06o58Dj3BG8Nyebu0v';
 export const ENTERPRISE_UPGRADE_URL = 'https://buy.stripe.com/6oU3cu5k12eVegk3teebu0w';
+export const ALLOWED_PAYMENT_LINK_IDS = ['plink_1TQzKrD6WvRe6sn3joY8o75q', 'plink_1TQzM4D6WvRe6sn355cMv035'];
 export const CHARACTER_LIMIT = 25000;
 export const HSPING_BASE_URL = 'https://api.hsping.com/api/v1/find';
 export const FREE_TIER_MONTHLY_LIMIT = 10;
