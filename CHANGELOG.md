@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.22] - 2026-06-18
+- feat: revoke API key on Stripe refund
+
 ## [1.0.21] - 2026-06-17
 - feat: add required fields to all tool inputSchemas; add ToolRank CI gate
 

@@ -7,7 +7,7 @@ import fs from 'fs';
 import axios from 'axios';
 
 import { VERSION, PERSIST_FILE, LEGAL_DISCLAIMER, nowISO, PRO_UPGRADE_URL, TRIAL_EXTENSION_CALLS, FREE_TIER_REDIS_KEY, FREE_TIER_MONTHLY_LIMIT, ALLOWED_PAYMENT_LINK_IDS } from './constants.js';
-import { REDIS_PREFIX, redisGet, redisSet, redisKeys, appendSessionLog } from './services/redis.js';
+import { REDIS_PREFIX, redisGet, redisSet, redisKeys, redisDelete, appendSessionLog } from './services/redis.js';
 import type { Stats, DependencyStatus, ServerCard } from './types.js';
 import { ClassifyInputSchema, ResponseFormat } from './schemas/classify.js';
 import { ValidateInputSchema } from './schemas/validate.js';
@@ -187,7 +187,48 @@ function generateApiKey(): string {
   return `hsc_${crypto.randomBytes(24).toString('hex')}`;
 }
 
+async function findCheckoutSessionEmail(paymentIntentId: string): Promise<string | undefined> {
+  const res = await axios.get('https://api.stripe.com/v1/checkout/sessions', {
+    params: { payment_intent: paymentIntentId },
+    headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` }
+  });
+  const session = res.data?.data?.[0];
+  return session?.customer_details?.email ?? session?.customer_email ?? undefined;
+}
+
 async function handleStripeEvent(event: Record<string, unknown>): Promise<void> {
+  if (event['type'] === 'charge.refunded') {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('[hs] STRIPE_SECRET_KEY not set — cannot revoke key on refund');
+      return;
+    }
+    const charge = (event['data'] as Record<string, unknown> | undefined)?.['object'] as Record<string, unknown> | undefined;
+    const paymentIntentId = charge?.['payment_intent'] as string | undefined;
+    if (!paymentIntentId) {
+      console.error('[hs] charge.refunded missing payment_intent — ignoring.');
+      return;
+    }
+    try {
+      const email = await findCheckoutSessionEmail(paymentIntentId);
+      if (!email) {
+        console.error('[hs] No checkout session/email found for refunded payment_intent ' + paymentIntentId);
+        return;
+      }
+      const revokedKey = Object.keys(stats.paid_api_keys).find(k => stats.paid_api_keys[k]?.email === email);
+      if (!revokedKey) {
+        console.error('[hs] No API key found for ' + email + ' — refund received, nothing to revoke');
+        return;
+      }
+      delete stats.paid_api_keys[revokedKey];
+      await redisDelete(`${REDIS_PREFIX}:key:${revokedKey}`);
+      saveStats(stats);
+      console.error('[Webhook] API key revoked for ' + email + ' — refund received');
+    } catch (err) {
+      console.error('[hs] charge.refunded handling error:', err);
+    }
+    return;
+  }
+
   if (event['type'] !== 'checkout.session.completed') return;
 
   const session = event['data'] as Record<string, unknown> | undefined;
