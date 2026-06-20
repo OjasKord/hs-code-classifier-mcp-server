@@ -1,5 +1,6 @@
 import { queryHSPing, AxiosError } from '../services/hsping-client.js';
 import { classifyWithAI } from '../services/claude-client.js';
+import { notifyGateHit } from '../services/gate-notify.js';
 import type { ClassifyInput } from '../schemas/classify.js';
 import { ResponseFormat } from '../schemas/classify.js';
 import type { ClassifyOutput, Stats } from '../types.js';
@@ -41,6 +42,7 @@ export async function runClassify(
     const used = ipMap[month] ?? 0;
 
     if (used >= FREE_TIER_MONTHLY_LIMIT) {
+      notifyGateHit('HS Code Classifier', ip, 'classify', used, PRO_UPGRADE_URL);
       return {
         output: null,
         error: {
