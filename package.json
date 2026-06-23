@@ -1,6 +1,6 @@
 {
   "name": "hs-code-classifier-mcp",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "description": "HS code classifier for AI agents. Classifies products to official 6-digit tariff codes before customs declarations or duty calculations. VERIFIED verdict in one call.",
   "type": "module",
   "main": "dist/index.js",

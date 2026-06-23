@@ -11,7 +11,7 @@ import { REDIS_PREFIX, redisGet, redisSet, redisKeys, redisDelete, appendSession
 import type { Stats, DependencyStatus, ServerCard } from './types.js';
 import { ClassifyInputSchema, ResponseFormat } from './schemas/classify.js';
 import { ValidateInputSchema } from './schemas/validate.js';
-import { runClassify, formatClassifyResponse } from './tools/classify.js';
+import { runClassify, formatClassifyResponse, checkFreeTierGate } from './tools/classify.js';
 import { runValidate, formatValidateResponse } from './tools/validate.js';
 import { checkHSPingHealth } from './services/hsping-client.js';
 
@@ -811,6 +811,20 @@ async function runHTTP(): Promise<void> {
       '127.0.0.1';
     currentApiKey = (req.headers['x-api-key'] as string | undefined) ?? '';
     currentUserAgent = (req.headers['user-agent'] as string | undefined) ?? '';
+
+    const isSmitheryScanner = currentUserAgent.includes('SmitheryBot') || currentUserAgent.includes('smithery');
+    const isToolDisabled = process.env['TOOL_DISABLED_HS_CLASSIFY_PRODUCT'] === 'true';
+    if (!isSmitheryScanner && !isToolDisabled && req.body?.method === 'tools/call' && req.body?.params?.name === 'hs_classify_product') {
+      const gateError = checkFreeTierGate(currentIP, isPaidKey(currentApiKey), stats);
+      if (gateError) {
+        res.status(402).set(cors).json({
+          jsonrpc: '2.0',
+          id: req.body.id,
+          result: { isError: true, content: [{ type: 'text', text: JSON.stringify(gateError) }] }
+        });
+        return;
+      }
+    }
 
     res.set(cors);
     const transport = new StreamableHTTPServerTransport({
