@@ -1,4 +1,11 @@
-export const VERSION = '1.0.24';
+export const VERSION = '1.0.25';
+export const FIRST_DEPLOYED = '2026-04-24T03:49:31Z';
+export const LIFETIME_CALLS_REDIS_KEY = 'hs:lifetime_calls';
+export const UPTIME_HEARTBEAT_KEY = 'hs:uptime:heartbeat_count';
+export const UPTIME_MONITORING_START_KEY = 'hs:uptime:monitoring_started';
+export const UPTIME_HEARTBEAT_INTERVAL_MS = 60000;
+export const FLEET_IP24_TTL_SECONDS = 30 * 24 * 60 * 60;
+export const FLEET_CROSS_SERVER_THRESHOLD = 3;
 export const PRO_UPGRADE_URL = 'https://buy.stripe.com/fZubJ06o58Dj3BG8Nyebu0v';
 export const ENTERPRISE_UPGRADE_URL = 'https://buy.stripe.com/6oU3cu5k12eVegk3teebu0w';
 export const ALLOWED_PAYMENT_LINK_IDS = ['plink_1TQzKrD6WvRe6sn3joY8o75q', 'plink_1TQzM4D6WvRe6sn355cMv035'];

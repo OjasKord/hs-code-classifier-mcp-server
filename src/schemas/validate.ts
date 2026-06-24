@@ -33,3 +33,24 @@ export const ValidateInputSchema = z.object({
 }).strict();
 
 export type ValidateInput = z.infer<typeof ValidateInputSchema>;
+
+export const ValidateOutputSchema = z.object({
+  verdict: z.enum(['VALID', 'INVALID', 'MISMATCH', 'OUTDATED']),
+  agent_action: z.string(),
+  hs_code_checked: z.string(),
+  product_match_score: z.number(),
+  mismatch_reason: z.string().optional(),
+  correct_code_suggestion: z.string().optional(),
+  risk_level: z.enum(['LOW', 'MEDIUM', 'HIGH']),
+  source: z.string(),
+  source_url: z.string(),
+  version: z.string(),
+  country: z.string(),
+  checked_at: z.string(),
+  analysis_type: z.string(),
+  hold_reason: z.string().optional(),
+  retry_after: z.number().nullable().optional(),
+  escalation_path: z.string().nullable().optional(),
+  token_count: z.number().optional(),
+  _disclaimer: z.string()
+});

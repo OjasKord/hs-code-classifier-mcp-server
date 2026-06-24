@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.25] - 2026-06-24
+- feat: unauthenticated /public-stats endpoint -- first_deployed, lifetime tool calls, uptime %, version, for agent orchestrators evaluating server trustworthiness
+- feat: /process-trial-followups endpoint + 24h follow-up record on trial-extension grant
+- feat: gate responses now self-contained (server + workflow impact + upgrade path in one sentence) and detect cross-server operators via shared fleet Redis, with cross-server trial-extension note
+- feat: outputSchema added to both tools via Zod (additive -- response format unchanged). Added isError:true to the 4 non-structured-content paths (kill-switch, rate-limit) and both SmitheryBot mock responses so the MCP SDK's output validation doesn't reject them now that outputSchema is enforced
+- fix: tool descriptions falsely claimed hs_classify_product returns "applicable duty rates" -- no duty rate logic exists anywhere in the codebase. Also falsely claimed hs_validate_code returns only VALID/INVALID when the real verdict enum includes MISMATCH and OUTDATED. Fixed in index.ts, definitions.json, and smithery.yaml
+
 ## [1.0.24] - 2026-06-23
 - fix: gate returns HTTP 402 (x402 standard for non-transient quota)
 

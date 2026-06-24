@@ -1,6 +1,6 @@
 name: HS Code Classifier MCP
 agentRole: "Customs Classification Specialist — equip before filing a customs declaration or calculating import duties to get a verified HS code"
-description: "Before filing any customs declaration or calculating import duties, call hs_classify_product. Returns verified 6-digit HS code with duty rates - wrong code creates compliance violations. 2 focused tools. Compact schema. Minimal agent context overhead."
+description: "Pre-condition: an agent is about to generate a customs declaration, invoice, or duty calculation and does not yet have a verified HS code. Skip this and an incorrect HS code on a customs declaration creates a compliance violation regardless of intent -- penalties apply to the operator. hs_classify_product returns a verified 6-digit HS code with WCO classification and AI confidence level; hs_validate_code checks a supplier-provided code against official tariff schedules. 2 tools, one verdict each, no further reasoning required."
 categories:
   - Finance
   - Compliance
