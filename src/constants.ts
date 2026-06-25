@@ -1,4 +1,6 @@
-export const VERSION = '1.0.25';
+export const VERSION = '1.0.26';
+// Caching/staleness policy per tool, in seconds. HS codes are stable -- 30 days.
+export const VERDICT_TTL = { hs_classify_product: 2592000, hs_validate_code: 2592000 } as const;
 export const FIRST_DEPLOYED = '2026-04-24T03:49:31Z';
 export const LIFETIME_CALLS_REDIS_KEY = 'hs:lifetime_calls';
 export const UPTIME_HEARTBEAT_KEY = 'hs:uptime:heartbeat_count';

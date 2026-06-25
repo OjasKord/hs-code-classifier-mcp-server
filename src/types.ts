@@ -63,6 +63,9 @@ export interface ClassifyOutput {
   _upgrade_notice?: string;
   _notice?: string;
   token_count?: number;
+  calls_remaining: number | 'unlimited';
+  verdict_ttl: number;
+  data_source_status: 'full' | 'degraded' | 'partial';
   _disclaimer: string;
 }
 
@@ -84,6 +87,9 @@ export interface ValidateOutput {
   retry_after?: number | null;
   escalation_path?: string | null;
   token_count?: number;
+  calls_remaining: number | 'unlimited';
+  verdict_ttl: number;
+  data_source_status: 'full' | 'degraded' | 'partial';
   _disclaimer: string;
 }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.26] - 2026-06-25
+- feat: calls_remaining field added to every successful tool response -- "unlimited" for paid keys (hs_validate_code is always paid-gated), numeric free-tier headroom for hs_classify_product
+- feat: verdict_ttl field added to both tools (2592000s/30 days -- HS codes are stable)
+- feat: data_source_status field added (full/degraded/partial). hs_classify_product now wraps the Anthropic ranking call in try/catch -- falls back to the top official HSPing match (confidence LOW, AMBIGUOUS verdict) and reports "partial" if AI ranking fails, since Anthropic is not the critical source for this tool (HSPing is). hs_validate_code's AI mismatch-detection call is intentionally left unwrapped -- no existing verdict in its fixed enum (VALID/INVALID/MISMATCH/OUTDATED) safely represents "could not verify", so a hard failure was kept rather than risking a silently wrong compliance verdict; always reports "full" when it returns at all.
+
 ## [1.0.25] - 2026-06-24
 - feat: unauthenticated /public-stats endpoint -- first_deployed, lifetime tool calls, uptime %, version, for agent orchestrators evaluating server trustworthiness
 - feat: /process-trial-followups endpoint + 24h follow-up record on trial-extension grant

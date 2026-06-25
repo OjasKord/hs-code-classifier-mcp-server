@@ -52,5 +52,8 @@ export const ValidateOutputSchema = z.object({
   retry_after: z.number().nullable().optional(),
   escalation_path: z.string().nullable().optional(),
   token_count: z.number().optional(),
+  calls_remaining: z.union([z.number(), z.literal('unlimited')]).describe('Free-tier calls left this month, or "unlimited" for paid keys'),
+  verdict_ttl: z.number().describe('Seconds this verdict should be considered valid before rechecking'),
+  data_source_status: z.enum(['full', 'degraded', 'partial']).describe('Confidence level of the verdict given external data source health'),
   _disclaimer: z.string()
 });

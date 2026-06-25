@@ -53,5 +53,8 @@ export const ClassifyOutputSchema = z.object({
   _upgrade_notice: z.string().optional(),
   _notice: z.string().optional(),
   token_count: z.number().optional(),
+  calls_remaining: z.union([z.number(), z.literal('unlimited')]).describe('Free-tier calls left this month, or "unlimited" for paid keys'),
+  verdict_ttl: z.number().describe('Seconds this verdict should be considered valid before rechecking'),
+  data_source_status: z.enum(['full', 'degraded', 'partial']).describe('Confidence level of the verdict given external data source health'),
   _disclaimer: z.string()
 });

@@ -3,7 +3,7 @@ import { validateWithAI } from '../services/claude-client.js';
 import type { ValidateInput } from '../schemas/validate.js';
 import { ResponseFormat } from '../schemas/validate.js';
 import type { ValidateOutput } from '../types.js';
-import { nowISO, LEGAL_DISCLAIMER } from '../constants.js';
+import { nowISO, LEGAL_DISCLAIMER, VERDICT_TTL } from '../constants.js';
 
 function normalizeHsCode(code: string): string {
   return code.replace(/[\s.]/g, '');
@@ -91,6 +91,9 @@ export async function runValidate(
     checked_at: nowISO(),
     analysis_type: 'AI-powered mismatch detection -- NOT a simple database lookup',
     token_count: 0,
+    calls_remaining: 'unlimited',
+    verdict_ttl: VERDICT_TTL.hs_validate_code,
+    data_source_status: 'full',
     _disclaimer: LEGAL_DISCLAIMER
   };
   if (out.verdict === 'MISMATCH') {

@@ -5,7 +5,7 @@ import { recordFleetGateHit, buildCrossServerNote } from '../services/redis.js';
 import type { ClassifyInput } from '../schemas/classify.js';
 import { ResponseFormat } from '../schemas/classify.js';
 import type { ClassifyOutput, Stats } from '../types.js';
-import { nowISO, LEGAL_DISCLAIMER, FREE_TIER_MONTHLY_LIMIT, FREE_TIER_WARNING_THRESHOLD, PRO_UPGRADE_URL, ENTERPRISE_UPGRADE_URL } from '../constants.js';
+import { nowISO, LEGAL_DISCLAIMER, FREE_TIER_MONTHLY_LIMIT, FREE_TIER_WARNING_THRESHOLD, PRO_UPGRADE_URL, ENTERPRISE_UPGRADE_URL, VERDICT_TTL } from '../constants.js';
 
 function buildMarkdown(out: ClassifyOutput): string {
   const lines: string[] = [
@@ -72,6 +72,10 @@ export async function runClassify(
   if (gateError) {
     return { output: null, error: gateError };
   }
+
+  const callsRemaining: number | 'unlimited' = isPaid
+    ? 'unlimited'
+    : Math.max(0, effectiveLimit - (((stats.free_tier_calls_by_ip[ip] ?? {})[new Date().toISOString().slice(0, 7)] ?? 0) + 1));
 
   const wordCount = params.product_description.trim().split(/\s+/).length;
   if (wordCount < 4) {
@@ -152,6 +156,9 @@ export async function runClassify(
       checked_at: nowISO(),
       analysis_type: 'AI-assisted classification -- NOT a simple database lookup',
       token_count: 0,
+      calls_remaining: callsRemaining,
+      verdict_ttl: VERDICT_TTL.hs_classify_product,
+      data_source_status: 'full',
       _disclaimer: LEGAL_DISCLAIMER
     };
     out.token_count = Math.ceil(JSON.stringify(out).length / 4);
@@ -159,7 +166,14 @@ export async function runClassify(
   }
 
   const allResults = hspingData.results;
-  const aiResult = await classifyWithAI(params.product_description, allResults, params.country);
+  let aiResult;
+  let aiDegraded = false;
+  try {
+    aiResult = await classifyWithAI(params.product_description, allResults, params.country);
+  } catch (err) {
+    aiDegraded = true;
+    aiResult = { confidence_level: 'LOW' as const, reasoning: 'AI classification ranking unavailable -- returning top official tariff match unranked. Manual review recommended before relying on this code.', best_match_index: 0 };
+  }
   const bestMatch = allResults[aiResult.best_match_index] ?? allResults[0];
 
   const month = new Date().toISOString().slice(0, 7);
@@ -206,6 +220,9 @@ export async function runClassify(
     ...(upgradeNotice ? { _upgrade_notice: upgradeNotice } : {}),
     ...(notice ? { _notice: notice } : {}),
     token_count: 0,
+    calls_remaining: callsRemaining,
+    verdict_ttl: VERDICT_TTL.hs_classify_product,
+    data_source_status: aiDegraded ? 'partial' : 'full',
     _disclaimer: LEGAL_DISCLAIMER
   };
   if (out.verdict === 'AMBIGUOUS') {
