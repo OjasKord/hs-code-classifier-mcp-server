@@ -775,6 +775,7 @@ async function runHTTP(): Promise<void> {
     stats.free_tier_calls_by_ip[ip][month] = Math.max(0, currentCalls - TRIAL_EXTENSION_CALLS);
     stats.trial_extensions[emailKey] = { name, email, use_case: use_case ?? '', ip, granted_at: nowISO() };
     saveStats(stats);
+    await redisSet(REDIS_PREFIX + ':trial:' + email.toLowerCase().trim(), { name, email, use_case: use_case ?? '', ip, timestamp: nowISO(), server: 'hs-code-classifier-mcp-server' });
     // 24h follow-up record -- processed by /process-trial-followups (fleet cron)
     await redisSet(REDIS_PREFIX + ':followup:' + email.toLowerCase().trim(), { email, name, server: 'hs-code-classifier-mcp-server', granted_at: nowISO(), sent: false });
     await sendEmail(

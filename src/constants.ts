@@ -1,4 +1,4 @@
-export const VERSION = '1.0.26';
+export const VERSION = '1.0.27';
 // Caching/staleness policy per tool, in seconds. HS codes are stable -- 30 days.
 export const VERDICT_TTL = { hs_classify_product: 2592000, hs_validate_code: 2592000 } as const;
 export const FIRST_DEPLOYED = '2026-04-24T03:49:31Z';

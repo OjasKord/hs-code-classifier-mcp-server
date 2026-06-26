@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.27] - 2026-06-26
+- fix: trial extension requests now written to Redis (hs:trial:{email}) on grant -- permanent audit trail that survives redeploys; previously in-memory only
+
 ## [1.0.26] - 2026-06-25
 - feat: calls_remaining field added to every successful tool response -- "unlimited" for paid keys (hs_validate_code is always paid-gated), numeric free-tier headroom for hs_classify_product
 - feat: verdict_ttl field added to both tools (2592000s/30 days -- HS codes are stable)
