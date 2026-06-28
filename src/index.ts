@@ -21,6 +21,10 @@ import { checkHSPingHealth } from './services/hsping-client.js';
 let currentIP = '127.0.0.1';
 let currentApiKey = '';
 let currentUserAgent = '';
+let currentOwnerKey = '';
+
+const OWNER_KEY = process.env.OWNER_KEY ?? '';
+const isOwner = (): boolean => OWNER_KEY !== '' && currentOwnerKey === OWNER_KEY;
 
 const perMinuteUsage = new Map<string, number>();
 
@@ -466,7 +470,12 @@ server.registerTool(
     if (!checkPerMinuteLimit(ip, 'hs_classify_product', 5)) {
       return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Rate limit exceeded — maximum 5 calls per minute per IP on AI-powered tools. Your workflow is calling this tool too rapidly.', agent_action: 'RETRY_IN_60_SEC', retryable: true, retry_after_ms: 60000, limit: 5, window: '1 minute' }) }] };
     }
-    const paid = isPaidKey(currentApiKey);
+    const ownerActive = isOwner();
+    if (ownerActive) {
+      redisIncr(REDIS_PREFIX + ':owner_calls:' + new Date().toISOString().slice(0, 7)).catch(() => {});
+      console.error('[owner] owner key used');
+    }
+    const paid = ownerActive || isPaidKey(currentApiKey);
 
     stats.total_calls++;
     stats.classify_calls++;
@@ -546,7 +555,12 @@ server.registerTool(
     if (!checkPerMinuteLimit(currentIP, 'hs_validate_code', 5)) {
       return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Rate limit exceeded — maximum 5 calls per minute per IP on AI-powered tools. Your workflow is calling this tool too rapidly.', agent_action: 'RETRY_IN_60_SEC', retryable: true, retry_after_ms: 60000, limit: 5, window: '1 minute' }) }] };
     }
-    const paid = isPaidKey(currentApiKey);
+    const ownerActive = isOwner();
+    if (ownerActive) {
+      redisIncr(REDIS_PREFIX + ':owner_calls:' + new Date().toISOString().slice(0, 7)).catch(() => {});
+      console.error('[owner] owner key used');
+    }
+    const paid = ownerActive || isPaidKey(currentApiKey);
 
     if (!paid) {
       recordFleetGateHit(currentIP).catch(() => {});
@@ -647,7 +661,7 @@ async function runHTTP(): Promise<void> {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, x-api-key, x-stats-key'
+    'Access-Control-Allow-Headers': 'Content-Type, x-api-key, x-stats-key, x-owner-key'
   };
 
   // Webhook must be registered before express.json() to receive raw body for signature verification
@@ -881,11 +895,12 @@ async function runHTTP(): Promise<void> {
       '127.0.0.1';
     currentApiKey = (req.headers['x-api-key'] as string | undefined) ?? '';
     currentUserAgent = (req.headers['user-agent'] as string | undefined) ?? '';
+    currentOwnerKey = (req.headers['x-owner-key'] as string | undefined) ?? '';
 
     const isSmitheryScanner = currentUserAgent.includes('SmitheryBot') || currentUserAgent.includes('smithery');
     const isToolDisabled = process.env['TOOL_DISABLED_HS_CLASSIFY_PRODUCT'] === 'true';
     if (!isSmitheryScanner && !isToolDisabled && req.body?.method === 'tools/call' && req.body?.params?.name === 'hs_classify_product') {
-      const gateError = await checkFreeTierGate(currentIP, isPaidKey(currentApiKey), stats);
+      const gateError = await checkFreeTierGate(currentIP, isPaidKey(currentApiKey) || isOwner(), stats);
       if (gateError) {
         res.status(402).set(cors).json({
           jsonrpc: '2.0',
