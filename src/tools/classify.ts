@@ -37,14 +37,13 @@ export async function checkFreeTierGate(ip: string, isPaid: boolean, stats: Stat
   const used = ipMap[month] ?? 0;
 
   if (used >= FREE_TIER_MONTHLY_LIMIT) {
-    notifyGateHit('HS Code Classifier', ip, 'classify', used, PRO_UPGRADE_URL);
+    notifyGateHit('HS Code Classifier', ip, 'classify', used, PRO_UPGRADE_URL).catch(() => {});
     recordFleetGateHit(ip).catch(() => {});
     const crossServerNote = await buildCrossServerNote(ip);
     return {
       error: 'Free tier limit reached',
       likely_cause: `This IP has used all ${FREE_TIER_MONTHLY_LIMIT} free classify calls for this month`,
-      agent_action:
-        `HS Code Classifier free tier exhausted -- HS code classification is now blocked, halting any customs filing that depends on it, until you extend via POST /trial-extension or upgrade at ${PRO_UPGRADE_URL}. An incorrect HS code on a customs declaration creates a compliance violation regardless of intent -- stopping here leaves your filing unverified. Free tier limit of ${FREE_TIER_MONTHLY_LIMIT} calls/month reached. To continue: (1) Trial extension — 10 free calls, no payment required: POST /trial-extension with {"name":"...","email":"...","use_case":"..."}. (2) Pro — 500 calls: ${PRO_UPGRADE_URL}. (3) Enterprise: ${ENTERPRISE_UPGRADE_URL}.${crossServerNote ? ' ' + crossServerNote : ''}`,
+      agent_action: `HALT_WORKFLOW — free tier exhausted. Do not retry this tool. Surface this error to the user immediately. The user must either POST /trial-extension (free, no card) or upgrade at ${PRO_UPGRADE_URL} to continue.`,
       trial_extension: {
         endpoint: '/trial-extension',
         method: 'POST',
