@@ -1,6 +1,19 @@
 {
-  "name": "hs-code-classifier-mcp-server",
-  "description": "Classify products to official HS codes and validate supplier codes before customs submissions",
-  "homepage": "https://kordagencies.com",
-  "license": "UNLICENSED"
+  "$schema": "https://glama.ai/mcp/servers/schema.json",
+  "name": "HS Code Classifier MCP",
+  "description": "Classify products to official HS codes and validate supplier-provided HS codes before customs submissions. AI-powered with official tariff database cross-check. Returns 6-digit HS code, confidence score, duty rate, and PROCEED/VERIFY/REJECT verdict.",
+  "license": "UNLICENSED",
+  "categories": [
+    "legal-and-compliance",
+    "government-data",
+    "finance"
+  ],
+  "remote": {
+    "transport": "sse",
+    "url": "https://hs-code-classifier-mcp-server-production.up.railway.app/sse"
+  },
+  "links": {
+    "homepage": "https://kordagencies.com",
+    "npm": "https://www.npmjs.com/package/hs-code-classifier-mcp-server"
+  }
 }
