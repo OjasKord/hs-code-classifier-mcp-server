@@ -1,7 +1,6 @@
 import { queryHSPing, AxiosError } from '../services/hsping-client.js';
 import { classifyWithAI } from '../services/claude-client.js';
-import { notifyGateHit } from '../services/gate-notify.js';
-import { recordFleetGateHit, buildCrossServerNote } from '../services/redis.js';
+import { recordFleetGateHit, buildCrossServerNote, appendSessionLog } from '../services/redis.js';
 import type { ClassifyInput } from '../schemas/classify.js';
 import { ResponseFormat } from '../schemas/classify.js';
 import type { ClassifyOutput, Stats } from '../types.js';
@@ -37,7 +36,12 @@ export async function checkFreeTierGate(ip: string, isPaid: boolean, stats: Stat
   const used = ipMap[month] ?? 0;
 
   if (used >= FREE_TIER_MONTHLY_LIMIT) {
-    notifyGateHit('HS Code Classifier', ip, 'classify', used, PRO_UPGRADE_URL).catch(() => {});
+    // Gate hits (free-tier exhausted) return before the normal success-path
+    // counters run -- log it here so /daily-report and /stats see gate
+    // volume as EVENTS instead of being blind to them. No email on a raw
+    // gate hit (removed 2026-07-27) -- email only on trial-extension
+    // request or a Stripe payment event.
+    appendSessionLog(ip, 'hs_classify_product', 'gated').catch(() => {});
     recordFleetGateHit(ip).catch(() => {});
     const crossServerNote = await buildCrossServerNote(ip);
     return {
