@@ -22,7 +22,7 @@ export async function classifyWithAI(
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 512,
+    max_tokens: 200,
     system:
       'You are a customs classification expert. Analyze HS code matches against a product description and select the best match. ' +
       'Respond ONLY with valid JSON -- no markdown, no explanation outside the JSON.',
@@ -85,7 +85,7 @@ export async function validateWithAI(
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 640,
+    max_tokens: 350,
     system:
       'You are a customs compliance expert. Validate HS codes against product descriptions and official tariff schedules. ' +
       'Be precise about mismatches -- wrong classifications carry legal liability for the importer. ' +
