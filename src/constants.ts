@@ -1,4 +1,9 @@
-export const VERSION = '1.0.36';
+import { readFileSync } from 'fs';
+
+// Single source of truth -- see L121 fix, 2026-09-07. Was previously a hand-typed
+// literal that silently drifted from package.json's version every time `npm
+// version patch` ran without a matching manual edit here.
+export const VERSION: string = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 // Caching/staleness policy per tool, in seconds. HS codes are stable -- 30 days.
 export const VERDICT_TTL = { hs_classify_product: 2592000, hs_validate_code: 2592000 } as const;
 export const FIRST_DEPLOYED = '2026-04-24T03:49:31Z';
