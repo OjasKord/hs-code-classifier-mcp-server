@@ -945,7 +945,7 @@ async function runHTTP(): Promise<void> {
 
   // Stats -- protected
   app.get('/stats', (req, res) => {
-    if (req.headers['x-stats-key'] !== process.env.STATS_KEY) {
+    if (!process.env.STATS_KEY || req.headers['x-stats-key'] !== process.env.STATS_KEY) {
       res.status(401).set(cors).json({ error: 'Unauthorized' });
       return;
     }
@@ -954,7 +954,7 @@ async function runHTTP(): Promise<void> {
 
   // Session log -- protected
   app.get('/session-log', (req, res) => {
-    if (req.headers['x-stats-key'] !== process.env.STATS_KEY) {
+    if (!process.env.STATS_KEY || req.headers['x-stats-key'] !== process.env.STATS_KEY) {
       res.status(401).set(cors).json({ error: 'Unauthorized' });
       return;
     }
@@ -1057,7 +1057,7 @@ async function runHTTP(): Promise<void> {
   // address, 24h after a trial extension was granted, unless that email has
   // since picked up a paid key on this server.
   app.post('/process-trial-followups', (req, res) => {
-    if (req.headers['x-stats-key'] !== process.env.STATS_KEY) {
+    if (!process.env.STATS_KEY || req.headers['x-stats-key'] !== process.env.STATS_KEY) {
       res.status(401).set(cors).json({ error: 'Unauthorized' });
       return;
     }
@@ -1089,7 +1089,7 @@ async function runHTTP(): Promise<void> {
 
   // Daily report -- JSON only, for Bizfile aggregation
   app.post('/daily-report', async (req, res) => {
-    if (req.headers['x-stats-key'] !== process.env.STATS_KEY) {
+    if (!process.env.STATS_KEY || req.headers['x-stats-key'] !== process.env.STATS_KEY) {
       res.status(401).set(cors).json({ error: 'Unauthorized' });
       return;
     }
